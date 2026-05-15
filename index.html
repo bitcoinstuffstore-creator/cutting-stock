@@ -3,27 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roll Cutting Optimizer & 2D Nesting</title>
+    <title>Open Source Roll Cutting Optimizer - Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
     <style>
         .step-hidden { display: none; }
         .drag-over { background-color: #eff6ff; border-color: #2563eb; }
-        /* Styling voor de 2D Nesting Visualisatie */
-        .nesting-container { position: relative; background-color: #f1f5f9; border: 2px solid #cbd5e1; border-radius: 4px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; height: 160px; }
+        
+        /* 2D Nesting Visualisatie */
+        .nesting-container { position: relative; background-color: #f8fafc; border: 2px solid #cbd5e1; overflow-x: auto; overflow-y: hidden; white-space: nowrap; height: 160px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
         .nesting-roll { position: relative; height: 100%; background-color: #e2e8f0; display: inline-block; }
-        .nesting-piece { position: absolute; background-color: #3b82f6; border: 1px solid #1e40af; opacity: 0.8; display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; font-weight: bold; overflow: hidden; }
-        .nesting-piece:hover { background-color: #2563eb; opacity: 1; z-index: 10; cursor: pointer; }
+        .nesting-piece { position: absolute; background-color: #3b82f6; border: 1px solid #1e40af; opacity: 0.85; display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; font-weight: bold; overflow: hidden; }
+        .nesting-piece:hover { background-color: #1d4ed8; opacity: 1; z-index: 10; cursor: pointer; }
+        .offcut-roll { background-color: #fef08a; border-color: #eab308; } /* Gele styling voor reststukken */
+
+        /* Print Styling (Verbergt UI, toont alleen documenten) */
+        @media print {
+            body { background-color: white; padding: 0; margin: 0; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            
+            /* Specifieke styling voor Werkbon */
+            body.print-werkbon #werkbon-container { display: block !important; }
+            
+            /* Specifieke styling voor Labels */
+            body.print-labels #label-container { display: flex !important; flex-wrap: wrap; gap: 10px; }
+            .label-item { width: 48%; border: 1px solid black; padding: 10px; margin-bottom: 10px; page-break-inside: avoid; }
+            
+            /* Reset nesting container for print to avoid scrollbars */
+            .nesting-container { overflow: visible; border: 1px solid black; }
+        }
+        .print-only { display: none; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
 
-    <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+    <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50 no-print">
         <div class="flex items-center gap-3">
             <i class="fa-solid fa-scissors text-blue-600 text-xl"></i>
             <h1 class="text-xl font-bold text-gray-800">Roll Cutting Optimizer</h1>
-            <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold ml-2">Nesting Engine v3.1</span>
+            <span class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold ml-2">Ultimate v4.0</span>
         </div>
         <div>
             <button onclick="resetProject()" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 font-bold py-2 px-4 rounded-lg text-sm transition-all shadow-sm">
@@ -32,21 +54,29 @@
         </div>
     </nav>
 
-    <main class="flex-grow flex items-center justify-center p-6">
+    <main class="flex-grow flex items-center justify-center p-6 no-print">
         
-        <div id="step-1" class="max-w-2xl w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-10 transition-all">
+        <div id="step-1" class="max-w-3xl w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-10 transition-all">
             <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6 text-3xl">
-                <i class="fa-solid fa-ruler-horizontal"></i>
+                <i class="fa-solid fa-warehouse"></i>
             </div>
-            <h2 class="text-2xl font-extrabold text-gray-900 mb-2">1. Beschikbare Rolbreedtes</h2>
+            <h2 class="text-2xl font-extrabold text-gray-900 mb-2">1. Magazijn & Inkoop</h2>
             <p class="text-gray-500 mb-8 text-sm">
-                Welke rolbreedtes (in mm) kun je inkopen voor je materialen? Het algoritme test ze allemaal en kiest per order de breedte met het minste snijverlies.
+                Definieer je standaard rolbreedtes én je beschikbare restmateriaal. Het algoritme vult eerst de reststukken voordat het een inkoopadvies geeft.
             </p>
             
-            <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 mb-8">
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Rolbreedtes (gescheiden door een komma)</label>
-                <input type="text" id="rolBreedtesInput" value="1200, 1500, 2000, 2500, 3200" class="w-full bg-white text-lg font-bold text-gray-800 border border-gray-300 rounded-lg p-3 focus:border-blue-600 outline-none shadow-sm">
-                <p class="text-[10px] text-gray-400 mt-2"><i class="fa-solid fa-info-circle"></i> Bijv: 1200, 2500, 3200</p>
+            <div class="space-y-6 mb-8">
+                <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-3"><i class="fa-solid fa-ruler-horizontal text-blue-500 mr-1"></i> Standaard Rolbreedtes (mm)</label>
+                    <input type="text" id="rolBreedtesInput" value="1200, 1500, 2000, 2500, 3200" class="w-full bg-white text-lg font-bold text-gray-800 border border-gray-300 rounded-lg p-3 focus:border-blue-600 outline-none shadow-sm">
+                    <p class="text-[10px] text-gray-400 mt-2">Nieuw te bestellen breedtes. Gescheiden door een komma.</p>
+                </div>
+
+                <div class="bg-yellow-50 p-5 rounded-xl border border-yellow-200">
+                    <label class="block text-xs font-bold text-yellow-700 uppercase tracking-wide mb-3"><i class="fa-solid fa-recycle mr-1"></i> Beschikbare Reststukken (Breedte x Lengte mm)</label>
+                    <input type="text" id="restStukkenInput" placeholder="Bijv: 2500x3000, 1200x1500" class="w-full bg-white text-lg font-bold text-gray-800 border border-yellow-300 rounded-lg p-3 focus:border-yellow-600 outline-none shadow-sm">
+                    <p class="text-[10px] text-yellow-600 mt-2">Optioneel. Formaat BxL. Wordt als eerste aangesproken.</p>
+                </div>
             </div>
 
             <button onclick="goToStep(2)" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-transform transform hover:-translate-y-1 text-lg">
@@ -83,12 +113,20 @@
         <div id="step-3" class="max-w-7xl w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden step-hidden p-8 transition-all">
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 pb-4 border-b gap-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-check-double text-green-500 mr-2"></i> 3. Inkoop- & Snijadvies</h2>
-                    <p class="text-sm text-gray-500 mt-1">Het algoritme heeft de best passende rolbreedte gekozen voor minimaal snijverlies.</p>
+                    <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-check-double text-green-500 mr-2"></i> 3. Productie Dashboard</h2>
+                    <p class="text-sm text-gray-500 mt-1">Klaar voor productie. Kies een uitvoer-optie.</p>
                 </div>
-                <button onclick="exporteerCSV()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow text-sm transition-colors">
-                    <i class="fa-solid fa-download mr-2"></i> Export Inkooplijst
-                </button>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="exporteerCSV()" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg border border-gray-300 text-sm transition-colors">
+                        <i class="fa-solid fa-file-excel mr-2"></i> Inkoop CSV
+                    </button>
+                    <button onclick="printLabels()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow text-sm transition-colors">
+                        <i class="fa-solid fa-barcode mr-2"></i> Print Labels
+                    </button>
+                    <button onclick="printWerkbon()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow text-sm transition-colors">
+                        <i class="fa-solid fa-print mr-2"></i> Print Werkbon (PDF)
+                    </button>
+                </div>
             </div>
             
             <div id="batchResultaten" class="space-y-8">
@@ -96,13 +134,24 @@
         </div>
     </main>
 
+    <div id="werkbon-container" class="print-only p-8">
+        <h1 class="text-3xl font-bold mb-2 border-b-2 border-black pb-2">Productie Werkbon</h1>
+        <p class="text-sm mb-8" id="print-date"></p>
+        <div id="werkbon-content"></div>
+    </div>
+
+    <div id="label-container" class="print-only">
+        </div>
+
     <script>
         let rawOrders = [];
         let computedBatches = [];
+        let labelsData = []; // Voor de zebra printer
 
         function resetProject() {
             rawOrders = [];
             computedBatches = [];
+            labelsData = [];
             document.getElementById('fileInput').value = "";
             document.querySelector('.id-btn-calc').classList.add('hidden');
             document.getElementById('batchResultaten').innerHTML = "";
@@ -114,14 +163,14 @@
             document.getElementById(`step-${s}`).classList.remove('step-hidden');
         }
 
+        // --- UPLOAD LOGICA ---
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
 
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
         dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
         dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
+            e.preventDefault(); dropZone.classList.remove('drag-over');
             if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFile({ target: fileInput }); }
         });
 
@@ -148,12 +197,12 @@
 
         function processImportData(rows) {
             rawOrders = [];
-            rows.forEach(r => {
+            rows.forEach((r, idx) => {
                 let l = convertToMM(r['Lengte'] || r['Afmeting 1'] || 0);
                 let b = convertToMM(r['Breedte'] || r['Afmeting 2'] || 0);
                 if (l > 0 && b > 0) {
                     rawOrders.push({
-                        orderNr: r['Verkoopordernummer'] || r['Order'] || '-',
+                        orderNr: r['Verkoopordernummer'] || r['Order'] || `ORD-${idx+1}`,
                         omschrijving: r['Artikelomschrijving'] || r['Omschrijving'] || 'Standaard Materiaal',
                         lengte: l, breedte: b,
                         aantal: parseInt(r['Orderhoeveelheid'] || r['Bevestigd hoeveelheid']) || 1
@@ -168,81 +217,126 @@
             }
         }
 
+        // --- ALGORITME (Met Offcuts) ---
         function berekenInkoop() {
-            let inputBreedtes = document.getElementById('rolBreedtesInput').value;
-            let availableWidths = inputBreedtes.split(',').map(w => parseInt(w.trim())).filter(w => !isNaN(w) && w > 0);
+            // 1. Haal instellingen op
+            let availableWidths = document.getElementById('rolBreedtesInput').value.split(',').map(w => parseInt(w.trim())).filter(w => !isNaN(w) && w > 0);
+            if (availableWidths.length === 0) return alert("Voer minimaal 1 standaard rolbreedte in.");
             
-            if (availableWidths.length === 0) return alert("Voer minimaal 1 geldige rolbreedte in.");
-            
+            // Haal Reststukken op (Formaat: 2500x3000)
+            let offcutInput = document.getElementById('restStukkenInput').value;
+            let offcuts = [];
+            if(offcutInput) {
+                offcuts = offcutInput.split(',').map(s => {
+                    let parts = s.toLowerCase().split('x');
+                    if(parts.length === 2) return { w: parseInt(parts[0].trim()), l: parseInt(parts[1].trim()), isOffcut: true };
+                    return null;
+                }).filter(x => x && x.w > 0 && x.l > 0);
+            }
+
             const naad = parseInt(document.getElementById('naadToeslag').value) || 0;
             const container = document.getElementById('batchResultaten');
             container.innerHTML = '';
             computedBatches = [];
+            labelsData = [];
 
+            // Groepeer op materiaal
             const groepen = {};
             rawOrders.forEach(o => { 
                 if(!groepen[o.omschrijving]) groepen[o.omschrijving] = []; 
                 groepen[o.omschrijving].push(o); 
             });
 
+            // Voor deze PoC testen we reststukken op de eerste grote bestelling die we tegenkomen
+            // In productie wil je offcuts koppelen aan materiaalsoorten. 
+            let remainingOffcuts = [...offcuts];
+
             Object.entries(groepen).forEach(([artikel, ords]) => {
-                let bestResult = null;
+                
+                // --- STAP A: PROBEER RESTSTUKKEN ---
+                // Simpele logica: pak de grootste order items, kijk of ze op een reststuk passen.
+                // Dit is complex in 1 JS functie, dus we passen de "Shelf Packer" direct toe op een vast formaat.
+                
+                let unpackedOrders = [...ords]; // We gaan deze leeg proberen te maken
+                let batchResults = [];
 
-                availableWidths.forEach(testBreedte => {
-                    let result = packOrders(ords, testBreedte, naad);
-                    if (!bestResult || result.efficiency > bestResult.efficiency) {
-                        bestResult = result;
+                if (remainingOffcuts.length > 0) {
+                    for(let i = remainingOffcuts.length - 1; i >= 0; i--) {
+                        let oc = remainingOffcuts[i];
+                        // Probeer items te packen op DEZE specifieke offcut (met max lengte oc.l)
+                        let result = packOrdersWithConstraint(unpackedOrders, oc.w, oc.l, naad);
+                        
+                        if(result.packed.length > 0) {
+                            // We hebben spullen op het reststuk gekregen!
+                            result.isOffcut = true;
+                            result.artikel = artikel + " (Uit Reststuk)";
+                            batchResults.push(result);
+                            // Verwijder de gepackte items uit de unpackedOrders
+                            unpackedOrders = result.remainingOrders;
+                            remainingOffcuts.splice(i, 1); // Reststuk is verbruikt
+                        }
                     }
-                });
+                }
 
-                bestResult.artikel = artikel;
-                computedBatches.push(bestResult);
-                renderBatchResult(container, bestResult);
+                // --- STAP B: DE REST OP NIEUWE ROLLEN ---
+                if (unpackedOrders.length > 0) {
+                    let bestResult = null;
+                    availableWidths.forEach(testBreedte => {
+                        let result = packOrdersWithConstraint(unpackedOrders, testBreedte, 9999999, naad); // Onbeperkte lengte
+                        if (!bestResult || result.efficiency > bestResult.efficiency) {
+                            bestResult = result;
+                        }
+                    });
+                    bestResult.artikel = artikel;
+                    batchResults.push(bestResult);
+                }
+
+                // --- RENDERING ---
+                batchResults.forEach(res => {
+                    computedBatches.push(res);
+                    renderBatchResult(container, res);
+                    
+                    // Sla labels op
+                    res.packed.forEach(p => {
+                        labelsData.push({ orderNr: p.id, desc: artikel, afm: `${p.w_orig}x${p.l_orig}mm` });
+                    });
+                });
             });
 
-            goToStep(3); // Dit was de boosdoener! Dit is nu correct veranderd naar 3.
+            goToStep(3);
         }
 
-        function packOrders(orders, rolBreedte, naad) {
-            let items = [];
-            let totalArea = 0;
-            let totalStuks = 0;
-
+        // Aangepaste Shelf Packer die stopt als de lengte op is (voor reststukken)
+        function packOrdersWithConstraint(orders, rolBreedte, maxLengte, naad) {
+            let itemsToPack = [];
             orders.forEach(o => {
                 for(let i=0; i < o.aantal; i++) {
-                    let w = o.breedte + naad;
-                    let l = o.lengte + naad;
-                    items.push({ id: o.orderNr, w: w, l: l });
-                    totalArea += (o.breedte * o.lengte);
-                    totalStuks++;
+                    itemsToPack.push({ id: o.orderNr, w: o.breedte + naad, l: o.lengte + naad, w_orig: o.breedte, l_orig: o.lengte });
                 }
             });
 
-            items.sort((a,b) => Math.max(b.w, b.l) - Math.max(a.w, a.l));
+            itemsToPack.sort((a,b) => Math.max(b.w, b.l) - Math.max(a.w, a.l));
 
             let shelves = [];
             let packedItems = [];
+            let remainingItems = [];
+            let totalAreaPacked = 0;
 
-            items.forEach(item => {
+            itemsToPack.forEach(item => {
                 let pw = item.w, pl = item.l;
-                
                 if (Math.max(item.w, item.l) <= rolBreedte) {
-                    if (item.l > item.w) { pw = item.w; pl = item.l; }
-                    else { pw = item.l; pl = item.w; }
-                } else if (item.w <= rolBreedte) {
-                    pw = item.w; pl = item.l;
-                } else if (item.l <= rolBreedte) {
-                    pw = item.l; pl = item.w;
-                } else {
-                    pw = item.w; pl = item.l;
-                }
+                    if (item.l > item.w) { pw = item.w; pl = item.l; } else { pw = item.l; pl = item.w; }
+                } else if (item.w <= rolBreedte) { pw = item.w; pl = item.l; } 
+                else if (item.l <= rolBreedte) { pw = item.l; pl = item.w; } 
+                else { pw = item.w; pl = item.l; } // Past niet op breedte
 
                 let placed = false;
                 for(let s of shelves) {
                     if (s.usedWidth + pw <= rolBreedte) {
-                        packedItems.push({ x: s.usedWidth, y: s.startY, w: pw, l: pl, id: item.id });
+                        packedItems.push({ x: s.usedWidth, y: s.startY, w: pw, l: pl, id: item.id, w_orig: item.w_orig, l_orig: item.l_orig });
                         s.usedWidth += pw;
                         s.height = Math.max(s.height, pl);
+                        totalAreaPacked += (item.w_orig * item.l_orig);
                         placed = true;
                         break;
                     }
@@ -250,64 +344,75 @@
 
                 if (!placed) {
                     let startY = shelves.reduce((sum, s) => sum + s.height, 0);
-                    packedItems.push({ x: 0, y: startY, w: pw, l: pl, id: item.id });
-                    shelves.push({ startY: startY, height: pl, usedWidth: pw });
+                    if (startY + pl <= maxLengte) { // Controleer of het nog op het reststuk past
+                        packedItems.push({ x: 0, y: startY, w: pw, l: pl, id: item.id, w_orig: item.w_orig, l_orig: item.l_orig });
+                        shelves.push({ startY: startY, height: pl, usedWidth: pw });
+                        totalAreaPacked += (item.w_orig * item.l_orig);
+                    } else {
+                        // Past niet op dit reststuk
+                        remainingItems.push(item);
+                    }
                 }
             });
 
+            // Herbouw de remainingOrders array structuur
+            let remGroups = {};
+            remainingItems.forEach(i => {
+                if(!remGroups[i.id]) remGroups[i.id] = { orderNr: i.id, breedte: i.w_orig, lengte: i.l_orig, aantal: 0 };
+                remGroups[i.id].aantal++;
+            });
+
             let benodigdeLengte = shelves.reduce((sum, s) => sum + s.height, 0);
-            let rolOppervlakte = (rolBreedte * benodigdeLengte);
-            let efficiency = rolOppervlakte > 0 ? (totalArea / rolOppervlakte) * 100 : 0;
+            let efficiency = benodigdeLengte > 0 ? (totalAreaPacked / (rolBreedte * benodigdeLengte)) * 100 : 0;
 
             return { 
                 rolBreedte: rolBreedte, 
                 lengte: benodigdeLengte, 
+                maxLengte: maxLengte,
                 efficiency: Math.min(efficiency, 100).toFixed(1),
                 packed: packedItems,
-                stuks: totalStuks
+                remainingOrders: Object.values(remGroups),
+                stuks: packedItems.length
             };
         }
 
+        // --- UI & PRINT FUNCTIES ---
         function renderBatchResult(container, data) {
-            let color = data.efficiency < 65 ? 'text-red-600 bg-red-50' : (data.efficiency < 85 ? 'text-orange-600 bg-orange-50' : 'text-green-600 bg-green-50');
-            let m = (data.lengte / 1000).toFixed(2);
+            let isOffcut = data.isOffcut;
+            let bgColor = isOffcut ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200';
+            let headColor = isOffcut ? 'text-yellow-800' : 'text-gray-800';
+            let badge = isOffcut ? `<span class="bg-yellow-200 text-yellow-800 text-xs px-2 py-1 rounded ml-2 uppercase font-bold">Voorraad Reststuk</span>` : '';
             
+            let m = (data.lengte / 1000).toFixed(2);
             let pixelsPerMM = 160 / data.rolBreedte;
-            let visualWidth = data.lengte * pixelsPerMM;
+            let visualWidth = (isOffcut ? data.maxLengte : data.lengte) * pixelsPerMM;
+            let rollBg = isOffcut ? 'background-color: #fef08a;' : '';
 
             let html = `
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="p-6 grid grid-cols-1 md:grid-cols-4 gap-6 bg-gray-50 border-b border-gray-100">
+                <div class="${bgColor} border rounded-xl shadow-sm overflow-hidden break-inside-avoid">
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-4 gap-6 border-b border-gray-100">
                         <div class="md:col-span-2">
-                            <h3 class="font-bold text-gray-800 text-lg mb-1">${data.artikel}</h3>
-                            <p class="text-xs text-gray-500 font-bold">${data.stuks} orders te snijden</p>
+                            <h3 class="font-bold ${headColor} text-lg mb-1">${data.artikel} ${badge}</h3>
+                            <p class="text-xs text-gray-500 font-bold">${data.stuks} orders geplaatst</p>
                         </div>
                         <div class="bg-white p-3 rounded-lg border border-gray-200 text-center shadow-sm">
-                            <p class="text-[10px] font-bold text-gray-400 uppercase">Te kopen rolbreedte</p>
-                            <span class="text-xl font-black text-blue-700">${data.rolBreedte} <span class="text-xs">mm</span></span>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">${isOffcut ? 'Reststuk Breedte' : 'Te kopen rolbreedte'}</p>
+                            <span class="text-xl font-black ${isOffcut ? 'text-yellow-600' : 'text-blue-700'}">${data.rolBreedte} <span class="text-xs">mm</span></span>
                         </div>
-                        <div class="bg-white p-3 rounded-lg border border-gray-200 text-center shadow-sm ${color}">
-                            <div class="flex justify-between items-center text-[10px] font-bold uppercase mb-1">
-                                <span>Benodigd</span>
-                                <span>Benutting</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-2xl font-black">${m}m</span>
-                                <span class="text-lg font-bold">${data.efficiency}%</span>
-                            </div>
+                        <div class="bg-white p-3 rounded-lg border border-gray-200 text-center shadow-sm">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">Benodigd</p>
+                            <span class="text-xl font-black">${m}m</span>
                         </div>
                     </div>
                     
                     <div class="p-4">
-                        <p class="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wide">2D Nesting Visualisatie (Schaal)</p>
+                        <p class="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wide">2D Snijtekening</p>
                         <div class="nesting-container">
-                            <div class="nesting-roll" style="width: ${visualWidth}px;">
+                            <div class="nesting-roll" style="width: ${visualWidth}px; ${rollBg}">
                                 ${data.packed.map(p => {
-                                    let left = p.y * pixelsPerMM;
-                                    let top = p.x * pixelsPerMM;
-                                    let width = p.l * pixelsPerMM;
-                                    let height = p.w * pixelsPerMM;
-                                    return `<div class="nesting-piece rounded-sm shadow-sm" style="left:${left}px; top:${top}px; width:${width}px; height:${height}px;" title="Order: ${p.id}\nAfm: ${p.w}x${p.l}mm"></div>`;
+                                    let left = p.y * pixelsPerMM; let top = p.x * pixelsPerMM;
+                                    let width = p.l * pixelsPerMM; let height = p.w * pixelsPerMM;
+                                    return `<div class="nesting-piece rounded-sm shadow-sm" style="left:${left}px; top:${top}px; width:${width}px; height:${height}px;">${p.id}</div>`;
                                 }).join('')}
                             </div>
                         </div>
@@ -317,15 +422,58 @@
             container.innerHTML += html;
         }
 
+        // --- DE DRIE EXPORT / PRINT METHODES ---
+
         function exporteerCSV() {
-            let csv = "data:text/csv;charset=utf-8,Omschrijving;Optimale_Rolbreedte_MM;Benodigde_Meters;Snij_Benutting;Aantal_Stuks\n" + 
-                      computedBatches.map(b => `${b.artikel.replace(/;/g, ',')};${b.rolBreedte};${(b.lengte/1000).toFixed(2)};${b.efficiency}%;${b.stuks}`).join("\n");
+            let csv = "data:text/csv;charset=utf-8,Omschrijving;Type;Rolbreedte_MM;Benodigde_Meters;Snij_Benutting;Aantal_Stuks\n" + 
+                      computedBatches.map(b => `${b.artikel.replace(/;/g, ',')};${b.isOffcut ? 'Restvoorraad' : 'Nieuw Inkoop'};${b.rolBreedte};${(b.lengte/1000).toFixed(2)};${b.efficiency}%;${b.stuks}`).join("\n");
             const link = document.createElement("a");
             link.setAttribute("href", encodeURI(csv));
-            link.setAttribute("download", "Inkoopadvies_Rolbreedtes.csv");
+            link.setAttribute("download", "Productie_Advies.csv");
             document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            link.click(); document.body.removeChild(link);
+        }
+
+        function printWerkbon() {
+            // Kopieer HTML naar print container
+            let d = new Date();
+            document.getElementById('print-date').innerText = "Geprint op: " + d.toLocaleString('nl-NL');
+            document.getElementById('werkbon-content').innerHTML = document.getElementById('batchResultaten').innerHTML;
+            
+            // Switch CSS en Print
+            document.body.classList.add('print-werkbon');
+            window.print();
+            
+            // Cleanup
+            setTimeout(() => { document.body.classList.remove('print-werkbon'); }, 500);
+        }
+
+        function printLabels() {
+            const container = document.getElementById('label-container');
+            container.innerHTML = ''; // Leegmaken
+
+            labelsData.forEach((label, i) => {
+                let div = document.createElement('div');
+                div.className = 'label-item flex flex-col justify-center items-center';
+                div.innerHTML = `
+                    <div class="font-bold text-xs uppercase text-gray-500 mb-1">${label.desc.substring(0,25)}</div>
+                    <svg id="barcode-${i}"></svg>
+                    <div class="font-black text-lg mt-1">${label.afm}</div>
+                `;
+                container.appendChild(div);
+                
+                // Genereer de barcode
+                JsBarcode(`#barcode-${i}`, label.orderNr, {
+                    format: "CODE128", width: 2, height: 40, displayValue: true, fontSize: 14
+                });
+            });
+
+            // Switch CSS en Print
+            document.body.classList.add('print-labels');
+            window.print();
+            
+            // Cleanup
+            setTimeout(() => { document.body.classList.remove('print-labels'); }, 500);
         }
     </script>
 </body>
