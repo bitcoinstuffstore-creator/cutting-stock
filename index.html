@@ -3,207 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solfaction - Snijoptimalisatie PoC</title>
+    <title>Solfaction - Snijoptimalisatie V2 (Import & Prioriteit)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        .priority-1 { border-left: 4px solid #ef4444; } /* Hoog */
+        .priority-2 { border-left: 4px solid #f97316; }
+        .priority-3 { border-left: 4px solid #eab308; }
+        .priority-4 { border-left: 4px solid #3b82f6; }
+        .priority-5 { border-left: 4px solid #10b981; } /* Laag */
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800 p-8 font-sans">
+<body class="bg-gray-100 text-gray-900 p-4 md:p-8 font-sans">
 
-    <div class="max-w-5xl mx-auto space-y-8">
+    <div class="max-w-7xl mx-auto space-y-6">
         
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h2 class="text-xl font-bold mb-4">Rolspecificatie</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm text-gray-600 mb-1">Rolbreedte (mm)</label>
-                    <input type="number" id="rolBreedte" value="2500" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-600 mb-1">Rollengte (mm)</label>
-                    <input type="number" id="rolLengte" value="40000" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-600 mb-1">Naadtoeslag per doek (mm)</label>
-                    <input type="number" id="naadToeslag" value="20" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div class="flex items-center mt-6">
-                    <input type="checkbox" id="magDraaien" checked class="w-5 h-5 text-blue-600 rounded">
-                    <label class="ml-2 text-sm font-medium">Doeken mogen draaien</label>
-                </div>
+        <header class="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div>
+                <h1 class="text-2xl font-bold text-blue-900">Solfaction Cutting Optimizer</h1>
+                <p class="text-sm text-gray-500">Onderdeel van Guillaume Jansen B.V.</p>
             </div>
-        </section>
+            <div class="text-right">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest">Importeer Orders</label>
+                <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            </div>
+        </header>
 
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h2 class="text-xl font-bold mb-4">Bestellingen</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <div class="grid grid-cols-12 gap-2 mb-2 font-medium text-sm text-gray-600">
-                <div class="col-span-2">Label</div>
-                <div class="col-span-3">Breedte (mm)</div>
-                <div class="col-span-3">Hoogte (mm)</div>
-                <div class="col-span-3">Aantal</div>
-                <div class="col-span-1 text-center">Wis</div>
-            </div>
+            <div class="space-y-6">
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-lg font-bold mb-4 flex items-center">
+                        <span class="bg-blue-100 text-blue-600 p-2 rounded-lg mr-2">⚙️</span>
+                        Rolspecificatie
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase">Rolbreedte (mm)</label>
+                            <input type="number" id="rolBreedte" value="2500" class="w-full border-b-2 border-gray-200 p-2 focus:border-blue-500 outline-none transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase">Rollengte (mm)</label>
+                            <input type="number" id="rolLengte" value="40000" class="w-full border-b-2 border-gray-200 p-2 focus:border-blue-500 outline-none transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase">Naadtoeslag (mm)</label>
+                            <input type="number" id="naadToeslag" value="20" class="w-full border-b-2 border-gray-200 p-2 focus:border-blue-500 outline-none transition-colors">
+                        </div>
+                        <div class="flex items-center pt-2">
+                            <input type="checkbox" id="magDraaien" checked class="w-4 h-4 text-blue-600 rounded">
+                            <label class="ml-2 text-sm font-medium">Doeken mogen draaien</label>
+                        </div>
+                    </div>
+                </section>
 
-            <div id="orderContainer" class="space-y-2">
-                </div>
-
-            <div class="mt-4 flex gap-4">
-                <button onclick="voegRegelToe()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 border rounded text-sm font-medium">
-                    + Regel toevoegen
+                <button onclick="berekenInkoop()" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-1 active:scale-95">
+                    Genereer Snijplan
                 </button>
             </div>
-        </section>
 
-        <button onclick="berekenInkoop()" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition-colors text-lg">
-            Bereken inkoop
-        </button>
-
-        <section id="resultaatSectie" class="hidden space-y-6">
-            <h2 class="text-2xl font-bold">Resultaat</h2>
-            
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-gray-100 p-4 rounded-lg">
-                    <p class="text-sm text-gray-600">Rollen nodig</p>
-                    <p class="text-3xl font-bold">1</p>
-                </div>
-                <div class="bg-gray-100 p-4 rounded-lg">
-                    <p class="text-sm text-gray-600">Totaal doeken</p>
-                    <p id="resTotaalDoeken" class="text-3xl font-bold">0</p>
-                </div>
-                <div class="bg-gray-100 p-4 rounded-lg">
-                    <p class="text-sm text-gray-600">Lengte gebruikt</p>
-                    <p id="resLengte" class="text-3xl font-bold">0 <span class="text-lg">m</span></p>
-                </div>
-                <div class="bg-gray-100 p-4 rounded-lg">
-                    <p class="text-sm text-gray-600">Geschatte benutting</p>
-                    <p id="resBenutting" class="text-3xl font-bold">0%</p>
-                </div>
-            </div>
-
-            <div class="bg-gray-100 p-4 rounded-lg overflow-x-auto">
-                <p class="text-sm font-bold mb-2">Schematische weergave (Indicatief)</p>
-                <div id="visualisatieContainer" class="flex items-end h-32 bg-white border-2 border-gray-300 min-w-max relative" style="width: 1000px;">
+            <div class="lg:col-span-2 space-y-6">
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold">Ingevoerde Orders</h2>
+                        <span id="orderCount" class="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full">0 orders</span>
                     </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-gray-400 border-b border-gray-100">
+                                    <th class="py-3 font-bold uppercase text-[10px]">Prio</th>
+                                    <th class="py-3 font-bold uppercase text-[10px]">ID</th>
+                                    <th class="py-3 font-bold uppercase text-[10px]">Soort / Kleur</th>
+                                    <th class="py-3 font-bold uppercase text-[10px]">Afmetingen (B x H)</th>
+                                    <th class="py-3 font-bold uppercase text-[10px]">Aantal</th>
+                                    <th class="py-3 font-bold uppercase text-[10px]">Deadline</th>
+                                    <th class="py-3 font-bold uppercase text-[10px]"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderTableBody" class="divide-y divide-gray-50">
+                                </tbody>
+                        </table>
+                    </div>
+                    
+                    <button onclick="voegHandmatigToe()" class="mt-4 text-blue-600 text-xs font-bold hover:underline">+ Handmatig order toevoegen</button>
+                </section>
+
+                <section id="resultaatSectie" class="hidden space-y-4">
+                    <h2 class="text-xl font-bold">Productie Advies</h2>
+                    <div id="batchResultaten" class="space-y-4">
+                        </div>
+                </section>
             </div>
-        </section>
+        </div>
     </div>
 
     <script>
-        // Initiele data (zoals in jouw screenshot)
-        let orders = [
-            { label: 'A', breedte: 2000, hoogte: 1500, aantal: 5, color: 'bg-blue-300' },
-            { label: 'B', breedte: 1200, hoogte: 800, aantal: 8, color: 'bg-green-300' },
-            { label: 'C', breedte: 3000, hoogte: 2200, aantal: 3, color: 'bg-purple-300' }
-        ];
+        let orders = [];
 
-        const kleuren = ['bg-blue-300', 'bg-green-300', 'bg-purple-300', 'bg-orange-300', 'bg-red-300', 'bg-yellow-300'];
+        // Luister naar file upload
+        document.getElementById('fileInput').addEventListener('change', handleFile, false);
 
-        function renderOrders() {
-            const container = document.getElementById('orderContainer');
-            container.innerHTML = '';
-            
-            orders.forEach((order, index) => {
-                const row = document.createElement('div');
-                row.className = 'grid grid-cols-12 gap-2 items-center';
-                row.innerHTML = `
-                    <div class="col-span-2">
-                        <input type="text" value="${order.label}" onchange="updateOrder(${index}, 'label', this.value)" class="w-full border p-2 rounded">
-                    </div>
-                    <div class="col-span-3">
-                        <input type="number" value="${order.breedte}" onchange="updateOrder(${index}, 'breedte', this.value)" class="w-full border p-2 rounded">
-                    </div>
-                    <div class="col-span-3">
-                        <input type="number" value="${order.hoogte}" onchange="updateOrder(${index}, 'hoogte', this.value)" class="w-full border p-2 rounded">
-                    </div>
-                    <div class="col-span-3">
-                        <input type="number" value="${order.aantal}" onchange="updateOrder(${index}, 'aantal', this.value)" class="w-full border p-2 rounded">
-                    </div>
-                    <div class="col-span-1 text-center">
-                        <button onclick="verwijderRegel(${index})" class="text-red-500 hover:text-red-700 font-bold px-2 py-1">&times;</button>
-                    </div>
-                `;
-                container.appendChild(row);
-            });
+        function handleFile(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = evt.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const firstSheet = workbook.SheetNames[0];
+                const excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[firstSheet]);
+                
+                processImport(excelRows);
+            };
+            reader.readAsBinaryString(file);
         }
 
-        function voegRegelToe() {
-            const nextLabel = String.fromCharCode(65 + orders.length); // A, B, C, D...
-            const color = kleuren[orders.length % kleuren.length];
-            orders.push({ label: nextLabel, breedte: 1000, hoogte: 1000, aantal: 1, color: color });
+        function processImport(rows) {
+            // Map de Excel kolommen naar onze structuur
+            // We zoeken naar kolommen die lijken op onze data
+            orders = rows.map((row, index) => ({
+                id: row.OrderID || row.ID || `ORD-${index+1}`,
+                doeksoort: row.Doeksoort || row.Soort || 'Standaard',
+                kleurcode: row.Kleurcode || row.Kleur || 'Onbekend',
+                breedte: parseInt(row.Breedte) || 0,
+                hoogte: parseInt(row.Hoogte) || 0,
+                aantal: parseInt(row.Aantal) || 1,
+                deadline: row.Deadline || '-',
+                prioriteit: parseInt(row.Prioriteit) || 3, // 1 is hoog, 5 is laag
+                kleur: getRandomTailwindColor(row.Kleurcode)
+            }));
+
+            // Sorteren: Eerst Prioriteit (1 voor 5), dan Deadline
+            orders.sort((a, b) => a.prioriteit - b.prioriteit || new Date(a.deadline) - new Date(b.deadline));
+
             renderOrders();
         }
 
-        function verwijderRegel(index) {
+        function renderOrders() {
+            const body = document.getElementById('orderTableBody');
+            const count = document.getElementById('orderCount');
+            body.innerHTML = '';
+            count.innerText = `${orders.length} orders`;
+
+            orders.forEach((order, index) => {
+                const row = document.createElement('tr');
+                row.className = `priority-${order.prioriteit} hover:bg-gray-50 transition-colors`;
+                row.innerHTML = `
+                    <td class="py-4 px-2 font-bold">${order.prioriteit}</td>
+                    <td class="py-4 text-gray-500 font-mono text-xs">${order.id}</td>
+                    <td class="py-4">
+                        <span class="block font-bold">${order.doeksoort}</span>
+                        <span class="text-xs text-gray-400">${order.kleurcode}</span>
+                    </td>
+                    <td class="py-4 font-medium">${order.breedte} x ${order.hoogte} <span class="text-[10px] text-gray-400">mm</span></td>
+                    <td class="py-4 font-bold text-blue-600">${order.aantal}x</td>
+                    <td class="py-4 text-xs">${order.deadline}</td>
+                    <td class="py-4 text-right">
+                        <button onclick="verwijderOrder(${index})" class="text-gray-300 hover:text-red-500 transition-colors">&times;</button>
+                    </td>
+                `;
+                body.appendChild(row);
+            });
+        }
+
+        function verwijderOrder(index) {
             orders.splice(index, 1);
             renderOrders();
         }
 
-        function updateOrder(index, veld, waarde) {
-            if(veld !== 'label') waarde = parseInt(waarde) || 0;
-            orders[index][veld] = waarde;
-        }
-
         function berekenInkoop() {
-            // Dit is een versimpeld Proof of Concept algoritme!
             const rolBreedte = parseInt(document.getElementById('rolBreedte').value);
             const rolLengte = parseInt(document.getElementById('rolLengte').value);
             const naad = parseInt(document.getElementById('naadToeslag').value);
             const magDraaien = document.getElementById('magDraaien').checked;
 
-            let totaalLengteGebruikt = 0;
-            let totaalDoeken = 0;
-            const visualisatie = document.getElementById('visualisatieContainer');
-            visualisatie.innerHTML = ''; // Maak visuele container leeg
+            const resultSectie = document.getElementById('resultaatSectie');
+            const batchContainer = document.getElementById('batchResultaten');
+            resultSectie.classList.remove('hidden');
+            batchContainer.innerHTML = '';
 
-            // Loop door alle orders om ze in te plannen
-            orders.forEach(order => {
-                totaalDoeken += order.aantal;
-                
-                for(let i=0; i < order.aantal; i++) {
-                    // Simpele logica: check of het doek op de breedte van de rol past
-                    let effectieveBreedte = order.breedte + naad;
-                    let effectieveHoogte = order.hoogte + naad;
-                    let benodigdeRolLengte = 0;
-
-                    if (magDraaien && effectieveHoogte <= rolBreedte && effectieveBreedte > rolBreedte) {
-                        // We moeten het doek draaien om te passen
-                        benodigdeRolLengte = effectieveBreedte;
-                    } else if (effectieveBreedte <= rolBreedte) {
-                        // Past normaal
-                        benodigdeRolLengte = effectieveHoogte;
-                    } else {
-                        // Past niet op deze rol, we tellen hem even simpel mee op zijn breedste kant voor de PoC
-                        benodigdeRolLengte = effectieveHoogte; 
-                    }
-
-                    // Voeg toe aan totale lengte
-                    totaalLengteGebruikt += benodigdeRolLengte;
-
-                    // Teken het blokje in de weergave
-                    const div = document.createElement('div');
-                    // Schaal voor weergave (heel grof voor de PoC)
-                    const visualWidth = Math.max((benodigdeRolLengte / rolLengte) * 1000, 10); // min 10px
-                    div.className = `${order.color} border border-black/20 flex items-center justify-center text-xs font-bold shrink-0`;
-                    div.style.width = `${visualWidth}px`;
-                    div.style.height = '100%';
-                    div.innerText = order.label;
-                    visualisatie.appendChild(div);
-                }
+            // Groepeer orders per Doeksoort + Kleurcode
+            const groepen = {};
+            orders.forEach(o => {
+                const sleutel = `${o.doeksoort} - ${o.kleurcode}`;
+                if (!groepen[sleutel]) groepen[sleutel] = [];
+                groepen[sleutel].push(o);
             });
 
-            // Update resultaat teksten
-            document.getElementById('resTotaalDoeken').innerText = totaalDoeken;
-            const meters = (totaalLengteGebruikt / 1000).toFixed(2);
-            document.getElementById('resLengte').innerText = meters + " m";
-            
-            const benutting = Math.min(((totaalLengteGebruikt / rolLengte) * 100).toFixed(1), 100);
-            document.getElementById('resBenutting').innerText = benutting + "%";
+            // Bereken per groep
+            for (const [titel, batchOrders] of Object.entries(groepen)) {
+                let benodigdeLengte = 0;
+                let totaalOppervlakte = 0;
 
-            // Toon de sectie
-            document.getElementById('resultaatSectie').classList.remove('hidden');
+                batchOrders.forEach(o => {
+                    let w = o.breedte + naad;
+                    let h = o.hoogte + naad;
+                    
+                    // Simpele PoC logica: we leggen alles achter elkaar op de rol
+                    for(let i=0; i<o.aantal; i++) {
+                        let snijLengte = h;
+                        if (magDraaien && h > rolBreedte && w <= rolBreedte) {
+                            snijLengte = w;
+                        } else if (w > rolBreedte) {
+                            // Als het te breed is, moet het sowieso gedraaid worden of past het niet
+                            snijLengte = w; 
+                        }
+                        benodigdeLengte += snijLengte;
+                        totaalOppervlakte += (o.breedte * o.hoogte);
+                    }
+                });
+
+                const meters = (benodigdeLengte / 1000).toFixed(2);
+                const benutting = ((totaalOppervlakte / (benodigdeLengte * rolBreedte)) * 100).toFixed(1);
+
+                const batchDiv = document.createElement('div');
+                batchDiv.className = "bg-white p-6 rounded-xl border border-blue-100 shadow-sm";
+                batchDiv.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold text-blue-900">${titel}</h3>
+                            <p class="text-xs text-gray-500">${batchOrders.length} orders in deze batch</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-2xl font-black text-blue-600">${meters}m</span>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">Nodig van rol</p>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-100 h-8 rounded-lg overflow-hidden flex border border-gray-200">
+                        <div class="bg-blue-500 h-full flex items-center justify-center text-[10px] text-white font-bold" style="width: ${benutting}%">
+                            ${benutting}% benut
+                        </div>
+                    </div>
+                    <p class="mt-2 text-[10px] text-gray-400 italic font-medium">* Visualisatie gebaseerd op lineaire snijvolgorde (Prio/Deadline)</p>
+                `;
+                batchContainer.appendChild(batchDiv);
+            }
         }
 
-        // Teken de begin-rijen zodra de pagina laadt
-        window.onload = renderOrders;
+        function getRandomTailwindColor(str) {
+            const colors = ['bg-blue-400', 'bg-emerald-400', 'bg-violet-400', 'bg-amber-400', 'bg-rose-400', 'bg-cyan-400'];
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        function voegHandmatigToe() {
+            const mock = [{
+                OrderID: 'MAN-1',
+                Doeksoort: 'Screen 5%',
+                Kleurcode: '7016 Antraciet',
+                Breedte: 2000,
+                Hoogte: 1500,
+                Aantal: 1,
+                Deadline: '2024-05-25',
+                Prioriteit: 3
+            }];
+            processImport([...orders, ...mock]);
+        }
     </script>
 </body>
 </html>
