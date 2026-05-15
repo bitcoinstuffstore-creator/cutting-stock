@@ -1,25 +1,23 @@
 # Open Source Roll Cutting Optimizer
 
-Een web-gebaseerde Proof of Concept (PoC) voor snij-optimalisatie, ontworpen om materiaalverlies te minimaliseren en het productieproces te stroomlijnen. 
+Een modulaire, web-gebaseerde applicatie voor het optimaliseren van snijplannen bij rolmaterialen. Ontworpen om materiaalverpakking (verknip) te minimaliseren door middel van batch-gebaseerde berekeningen.
 
-## 🏭 De Uitdaging: Het "Cutting Stock" Probleem
-In veel productieomgevingen waar gewerkt wordt met materialen op rollen — zoals in de zonwering, zeilmakerijen, textielindustrie, maar ook bij folie-, papier- of staalverwerking — is het efficiënt indelen van snijplannen een complexe puzzel. 
+## 🏭 Toepassing
+Deze tool is ontwikkeld voor industrieën die werken met rollen materiaal van vaste breedtes (zoals textiel, zonwering, folie of papier). Het lost de uitdaging op van het indelen van verschillende orderafmetingen op één of meerdere rollen, waarbij rekening wordt gehouden met naadtoeslagen en optionele rotatie van het materiaal.
 
-Handmatige planning is vaak tijdrovend en leidt onvermijdelijk tot onnodig restmateriaal (verknip). Het doel van deze tool is om dit wiskundige optimalisatievraagstuk (bekend als het *1D/2D Cutting Stock Problem*) laagdrempelig en visueel op te lossen.
+## 🛠️ Functionaliteiten
+* **Workflow-gestuurd:** Een eenvoudig stappenplan van upload naar resultaat.
+* **Universele CSV/Excel Import:** Herkent automatisch kolommen voor ordernummers, afmetingen en omschrijvingen uit standaard exportbestanden.
+* **Geavanceerde Parameters:** Stel rolbreedtes, naadtoeslagen en rotatieregels (90 graden) in per project.
+* **Data Privacy:** Alle berekeningen vinden lokaal in de browser plaats. Er wordt geen data geüpload naar een externe server.
+* **Export:** Genereer met één klik een CSV-overzicht van de benodigde meters en de berekende efficiëntie per batch.
 
-## ✨ Kernfunctionaliteiten
-Deze tool is ontworpen met de realiteit van de fabrieksvloer in gedachten:
-* **Slimme Import:** Upload direct exportbestanden (.xlsx, .csv) vanuit bestaande ERP- of ordersystemen.
-* **Automatische Batching:** Orders worden direct gegroepeerd op materiaal- en kleurcode, zodat productielijnen soepel kunnen doorwerken.
-* **Prioriteit & Deadlines:** Het algoritme houdt niet alleen rekening met afmetingen, maar sorteert ook op productiedeadline en spoed-prioriteit.
-* **Visuele Output:** Direct visueel inzicht in de benutting van de rol en het verwachte restmateriaal.
+## 🚀 Gebruik
+1. Open de live-versie van de tool via GitHub Pages.
+2. Upload een exportbestand uit je ordersysteem.
+3. Controleer de afmetingen in het preview-scherm.
+4. Stel de rolspecificaties van je huidige voorraad in.
+5. Bekijk het productieadvies en exporteer de data voor gebruik op de werkvloer.
 
-## 🚀 Brede Toepasbaarheid
-Hoewel de logica in deze PoC in eerste instantie is geïnspireerd door uitdagingen binnen de industriële textiel- en zonweringsbranche (met parameters zoals *naadtoeslag* en de keuze of *weefrichting* mag draaien), is de fundamentele code breed inzetbaar. 
-
-Elke industrie die lineaire of rechthoekige eenheden uit een grotere basisrol of plaat moet snijden, kan deze logica gebruiken en verder uitbreiden.
-
-## 🛠️ Gebruik en Ontwikkeling
-Dit project is open-source. De huidige versie betreft een front-end Proof of Concept gebouwd met HTML, Tailwind CSS en Vanilla JavaScript (inclusief SheetJS voor lokale bestandsprocessing). Omdat berekeningen *client-side* (in de browser) plaatsvinden, blijft bedrijfsdata veilig en is er geen backend database nodig voor basisgebruik.
-
-Bijdragen aan het optimalisatie-algoritme, restmateriaal-beheer (offcuts) of defect-tracking zijn zeer welkom!
+## 📄 Licentie
+Dit project is open-source en beschikbaar voor gebruik en doorontwikkeling binnen de maakindustrie.
