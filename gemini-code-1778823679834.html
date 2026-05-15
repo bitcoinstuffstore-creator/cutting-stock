@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solfaction - Snijoptimalisatie PoC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 p-8 font-sans">
+
+    <div class="max-w-5xl mx-auto space-y-8">
+        
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-xl font-bold mb-4">Rolspecificatie</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">Rolbreedte (mm)</label>
+                    <input type="number" id="rolBreedte" value="2500" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">Rollengte (mm)</label>
+                    <input type="number" id="rolLengte" value="40000" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">Naadtoeslag per doek (mm)</label>
+                    <input type="number" id="naadToeslag" value="20" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="flex items-center mt-6">
+                    <input type="checkbox" id="magDraaien" checked class="w-5 h-5 text-blue-600 rounded">
+                    <label class="ml-2 text-sm font-medium">Doeken mogen draaien</label>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-xl font-bold mb-4">Bestellingen</h2>
+            
+            <div class="grid grid-cols-12 gap-2 mb-2 font-medium text-sm text-gray-600">
+                <div class="col-span-2">Label</div>
+                <div class="col-span-3">Breedte (mm)</div>
+                <div class="col-span-3">Hoogte (mm)</div>
+                <div class="col-span-3">Aantal</div>
+                <div class="col-span-1 text-center">Wis</div>
+            </div>
+
+            <div id="orderContainer" class="space-y-2">
+                </div>
+
+            <div class="mt-4 flex gap-4">
+                <button onclick="voegRegelToe()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 border rounded text-sm font-medium">
+                    + Regel toevoegen
+                </button>
+            </div>
+        </section>
+
+        <button onclick="berekenInkoop()" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition-colors text-lg">
+            Bereken inkoop
+        </button>
+
+        <section id="resultaatSectie" class="hidden space-y-6">
+            <h2 class="text-2xl font-bold">Resultaat</h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gray-100 p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Rollen nodig</p>
+                    <p class="text-3xl font-bold">1</p>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Totaal doeken</p>
+                    <p id="resTotaalDoeken" class="text-3xl font-bold">0</p>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Lengte gebruikt</p>
+                    <p id="resLengte" class="text-3xl font-bold">0 <span class="text-lg">m</span></p>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Geschatte benutting</p>
+                    <p id="resBenutting" class="text-3xl font-bold">0%</p>
+                </div>
+            </div>
+
+            <div class="bg-gray-100 p-4 rounded-lg overflow-x-auto">
+                <p class="text-sm font-bold mb-2">Schematische weergave (Indicatief)</p>
+                <div id="visualisatieContainer" class="flex items-end h-32 bg-white border-2 border-gray-300 min-w-max relative" style="width: 1000px;">
+                    </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Initiele data (zoals in jouw screenshot)
+        let orders = [
+            { label: 'A', breedte: 2000, hoogte: 1500, aantal: 5, color: 'bg-blue-300' },
+            { label: 'B', breedte: 1200, hoogte: 800, aantal: 8, color: 'bg-green-300' },
+            { label: 'C', breedte: 3000, hoogte: 2200, aantal: 3, color: 'bg-purple-300' }
+        ];
+
+        const kleuren = ['bg-blue-300', 'bg-green-300', 'bg-purple-300', 'bg-orange-300', 'bg-red-300', 'bg-yellow-300'];
+
+        function renderOrders() {
+            const container = document.getElementById('orderContainer');
+            container.innerHTML = '';
+            
+            orders.forEach((order, index) => {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-2 items-center';
+                row.innerHTML = `
+                    <div class="col-span-2">
+                        <input type="text" value="${order.label}" onchange="updateOrder(${index}, 'label', this.value)" class="w-full border p-2 rounded">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="number" value="${order.breedte}" onchange="updateOrder(${index}, 'breedte', this.value)" class="w-full border p-2 rounded">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="number" value="${order.hoogte}" onchange="updateOrder(${index}, 'hoogte', this.value)" class="w-full border p-2 rounded">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="number" value="${order.aantal}" onchange="updateOrder(${index}, 'aantal', this.value)" class="w-full border p-2 rounded">
+                    </div>
+                    <div class="col-span-1 text-center">
+                        <button onclick="verwijderRegel(${index})" class="text-red-500 hover:text-red-700 font-bold px-2 py-1">&times;</button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function voegRegelToe() {
+            const nextLabel = String.fromCharCode(65 + orders.length); // A, B, C, D...
+            const color = kleuren[orders.length % kleuren.length];
+            orders.push({ label: nextLabel, breedte: 1000, hoogte: 1000, aantal: 1, color: color });
+            renderOrders();
+        }
+
+        function verwijderRegel(index) {
+            orders.splice(index, 1);
+            renderOrders();
+        }
+
+        function updateOrder(index, veld, waarde) {
+            if(veld !== 'label') waarde = parseInt(waarde) || 0;
+            orders[index][veld] = waarde;
+        }
+
+        function berekenInkoop() {
+            // Dit is een versimpeld Proof of Concept algoritme!
+            const rolBreedte = parseInt(document.getElementById('rolBreedte').value);
+            const rolLengte = parseInt(document.getElementById('rolLengte').value);
+            const naad = parseInt(document.getElementById('naadToeslag').value);
+            const magDraaien = document.getElementById('magDraaien').checked;
+
+            let totaalLengteGebruikt = 0;
+            let totaalDoeken = 0;
+            const visualisatie = document.getElementById('visualisatieContainer');
+            visualisatie.innerHTML = ''; // Maak visuele container leeg
+
+            // Loop door alle orders om ze in te plannen
+            orders.forEach(order => {
+                totaalDoeken += order.aantal;
+                
+                for(let i=0; i < order.aantal; i++) {
+                    // Simpele logica: check of het doek op de breedte van de rol past
+                    let effectieveBreedte = order.breedte + naad;
+                    let effectieveHoogte = order.hoogte + naad;
+                    let benodigdeRolLengte = 0;
+
+                    if (magDraaien && effectieveHoogte <= rolBreedte && effectieveBreedte > rolBreedte) {
+                        // We moeten het doek draaien om te passen
+                        benodigdeRolLengte = effectieveBreedte;
+                    } else if (effectieveBreedte <= rolBreedte) {
+                        // Past normaal
+                        benodigdeRolLengte = effectieveHoogte;
+                    } else {
+                        // Past niet op deze rol, we tellen hem even simpel mee op zijn breedste kant voor de PoC
+                        benodigdeRolLengte = effectieveHoogte; 
+                    }
+
+                    // Voeg toe aan totale lengte
+                    totaalLengteGebruikt += benodigdeRolLengte;
+
+                    // Teken het blokje in de weergave
+                    const div = document.createElement('div');
+                    // Schaal voor weergave (heel grof voor de PoC)
+                    const visualWidth = Math.max((benodigdeRolLengte / rolLengte) * 1000, 10); // min 10px
+                    div.className = `${order.color} border border-black/20 flex items-center justify-center text-xs font-bold shrink-0`;
+                    div.style.width = `${visualWidth}px`;
+                    div.style.height = '100%';
+                    div.innerText = order.label;
+                    visualisatie.appendChild(div);
+                }
+            });
+
+            // Update resultaat teksten
+            document.getElementById('resTotaalDoeken').innerText = totaalDoeken;
+            const meters = (totaalLengteGebruikt / 1000).toFixed(2);
+            document.getElementById('resLengte').innerText = meters + " m";
+            
+            const benutting = Math.min(((totaalLengteGebruikt / rolLengte) * 100).toFixed(1), 100);
+            document.getElementById('resBenutting').innerText = benutting + "%";
+
+            // Toon de sectie
+            document.getElementById('resultaatSectie').classList.remove('hidden');
+        }
+
+        // Teken de begin-rijen zodra de pagina laadt
+        window.onload = renderOrders;
+    </script>
+</body>
+</html>
