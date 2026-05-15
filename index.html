@@ -6,343 +6,375 @@
     <title>Open Source Roll Cutting Optimizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        .priority-1 { border-left: 4px solid #ef4444; } /* Hoog (Rood) */
-        .priority-2 { border-left: 4px solid #f97316; } /* Oranje */
-        .priority-3 { border-left: 4px solid #eab308; } /* Geel */
-        .priority-4 { border-left: 4px solid #3b82f6; } /* Blauw */
-        .priority-5 { border-left: 4px solid #10b981; } /* Laag (Groen) */
+        .step-hidden { display: none; }
+        .drag-over { background-color: #eff6ff; border-color: #2563eb; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 p-4 md:p-8 font-sans">
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
 
-    <div class="max-w-7xl mx-auto space-y-6">
+    <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-scissors text-blue-600 text-xl"></i>
+            <h1 class="text-xl font-bold text-gray-800">Roll Cutting Optimizer</h1>
+        </div>
+        <div class="text-sm font-medium text-gray-400">
+            Workflow Modus <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full ml-1">v2.0</span>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex items-center justify-center p-6">
         
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm border border-gray-200 gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-slate-800">Roll Cutting Optimizer <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded ml-2">PoC v1.2</span></h1>
-                <p class="text-sm text-gray-500">Open-source snij-optimalisatie voor rolmaterialen</p>
+        <div id="step-1" class="max-w-2xl w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden text-center p-12 transition-all">
+            <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+                <i class="fa-solid fa-layer-group"></i>
             </div>
-            <div class="flex gap-4 items-center w-full md:w-auto">
-                <button onclick="laadTestData()" class="text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors border border-indigo-200">
-                    <span class="mr-2">✨</span>Laad Voorbeelddata
-                </button>
-                <div class="border-l border-gray-300 h-8 hidden md:block"></div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Eigen bestand (.xlsx, .csv)</label>
-                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer w-full">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-4">Start met optimaliseren</h2>
+            <p class="text-gray-500 mb-8 leading-relaxed">
+                Welkom bij de snij-optimalisatie tool. Door je order-exports direct te uploaden, berekent deze tool direct de meest efficiënte indeling op je rol en verminderen we restmateriaal (verknip).
+            </p>
+            <button onclick="goToStep(2)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-transform transform hover:-translate-y-1 text-lg">
+                Start Project <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+
+        <div id="step-2" class="max-w-6xl w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden step-hidden p-8 transition-all">
+            
+            <div class="flex items-center justify-between mb-8 pb-4 border-b">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-file-csv text-blue-600 mr-2"></i> 1. Orders Uploaden</h2>
+                <button onclick="goToStep(1)" class="text-gray-400 hover:text-gray-600 text-sm font-bold">Annuleren</button>
+            </div>
+
+            <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:bg-gray-50 transition-colors mb-8">
+                <i class="fa-solid fa-cloud-arrow-up text-5xl text-gray-300 mb-4"></i>
+                <p class="text-gray-600 font-medium mb-1">Sleep je export (.csv of .xlsx) in dit vak</p>
+                <p class="text-xs text-gray-400 mb-4">of klik om handmatig een bestand te kiezen</p>
+                <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
+                <button onclick="document.getElementById('fileInput').click()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50">Bladeren</button>
+            </div>
+
+            <div id="tablePreview" class="hidden space-y-4">
+                <div class="flex justify-between items-end">
+                    <h3 class="text-lg font-bold text-gray-800">Ingelezen Orders</h3>
+                    <span id="orderCount" class="text-xs font-bold bg-green-100 text-green-700 px-3 py-1 rounded-full">0 gevonden</span>
+                </div>
+                <div class="overflow-x-auto border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr class="text-gray-500 border-b border-gray-200">
+                                <th class="py-3 px-4 font-bold text-xs uppercase">Verkooporder</th>
+                                <th class="py-3 px-4 font-bold text-xs uppercase">Omschrijving</th>
+                                <th class="py-3 px-4 font-bold text-xs uppercase">L x B (mm)</th>
+                                <th class="py-3 px-4 font-bold text-xs uppercase">Hoeveelheid</th>
+                                <th class="py-3 px-4 font-bold text-xs uppercase">Leverdatum</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderTableBody" class="divide-y divide-gray-100 bg-white">
+                            </tbody>
+                    </table>
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button onclick="goToStep(3)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all">
+                        Volgende: Rol Specificatie <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
                 </div>
             </div>
-        </header>
+        </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <div id="step-3" class="max-w-3xl w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden step-hidden p-8 transition-all">
             
-            <div class="xl:col-span-1 space-y-6">
-                
-                <section class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-                    <h2 class="text-sm font-bold mb-3 text-slate-700 uppercase tracking-wide border-b pb-2">📋 Kolom Mapping</h2>
-                    <p class="text-[10px] text-gray-500 mb-4">Typ hier exact de kolomnamen (headers) zoals ze in jouw Excel/CSV staan.</p>
-                    <div class="space-y-3">
-                        <div class="flex justify-between items-center gap-2">
-                            <label class="text-xs font-medium text-gray-600 w-1/3">Order ID</label>
-                            <input type="text" id="mapID" value="OrderID" class="w-2/3 border bg-gray-50 p-1.5 text-xs rounded outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="flex justify-between items-center gap-2">
-                            <label class="text-xs font-medium text-gray-600 w-1/3">Materiaal</label>
-                            <input type="text" id="mapSoort" value="Materiaal" class="w-2/3 border bg-gray-50 p-1.5 text-xs rounded outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="flex justify-between items-center gap-2">
-                            <label class="text-xs font-medium text-gray-600 w-1/3">Kleur</label>
-                            <input type="text" id="mapKleur" value="Kleurcode" class="w-2/3 border bg-gray-50 p-1.5 text-xs rounded outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="flex justify-between items-center gap-2">
-                            <label class="text-xs font-medium text-gray-600 w-1/3">Breedte</label>
-                            <input type="text" id="mapBreedte" value="Breedte" class="w-2/3 border bg-gray-50 p-1.5 text-xs rounded outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="flex justify-between items-center gap-2">
-                            <label class="text-xs font-medium text-gray-600 w-1/3">Hoogte</label>
-                            <input type="text" id="mapHoogte" value="Hoogte" class="w-2/3 border bg-gray-50 p-1.5 text-xs rounded outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="flex justify-between items-center gap-2">
-                            <label class="text-xs font-medium text-gray-600 w-1/3">Aantal</label>
-                            <input type="text" id="mapAantal" value="Aantal" class="w-2/3 border bg-gray-50 p-1.5 text-xs rounded outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="flex justify-between items-center gap-2">
-                            <label class="text-xs font-medium text-gray-600 w-1/3">Deadline</label>
-                            <input type="text" id="mapDeadline" value="Leverdatum" class="w-2/3 border bg-gray-50 p-1.5 text-xs rounded outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="flex justify-between items-center gap-2">
-                            <label class="text-xs font-medium text-gray-600 w-1/3">Prio (1-5)</label>
-                            <input type="text" id="mapPrio" value="Prio" class="w-2/3 border bg-gray-50 p-1.5 text-xs rounded outline-none focus:border-indigo-500">
-                        </div>
-                    </div>
-                </section>
+            <div class="flex items-center justify-between mb-8 pb-4 border-b">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-sliders text-blue-600 mr-2"></i> 2. Rolspecificatie Check</h2>
+                <button onclick="goToStep(2)" class="text-gray-400 hover:text-gray-600 text-sm font-bold">Terug</button>
+            </div>
 
-                <section class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-                    <h2 class="text-sm font-bold mb-4 text-slate-700 uppercase tracking-wide border-b pb-2">⚙️ Rolspecificatie</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500">Rolbreedte (mm)</label>
-                            <input type="number" id="rolBreedte" value="2500" class="w-full border-b-2 border-gray-200 p-2 focus:border-indigo-500 outline-none transition-colors">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500">Rollengte (mm)</label>
-                            <input type="number" id="rolLengte" value="40000" class="w-full border-b-2 border-gray-200 p-2 focus:border-indigo-500 outline-none transition-colors">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500">Naadtoeslag (mm)</label>
-                            <input type="number" id="naadToeslag" value="20" class="w-full border-b-2 border-gray-200 p-2 focus:border-indigo-500 outline-none transition-colors">
-                        </div>
-                        <div class="flex items-center pt-2">
-                            <input type="checkbox" id="magDraaien" checked class="w-4 h-4 text-indigo-600 rounded">
-                            <label class="ml-2 text-sm font-medium">Doeken mogen draaien</label>
-                        </div>
+            <div class="space-y-6 mb-8">
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Rolbreedte (mm)</label>
+                        <input type="number" id="rolBreedte" value="2500" class="w-full bg-transparent text-xl font-bold text-gray-800 border-b-2 border-gray-300 focus:border-blue-600 outline-none pb-1">
                     </div>
-                </section>
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Rollengte (mm)</label>
+                        <input type="number" id="rolLengte" value="40000" class="w-full bg-transparent text-xl font-bold text-gray-800 border-b-2 border-gray-300 focus:border-blue-600 outline-none pb-1">
+                    </div>
+                </div>
 
-                <button onclick="berekenInkoop()" class="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-1 active:scale-95">
-                    Genereer Snijplan
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Naadtoeslag per doek (mm)</label>
+                    <input type="number" id="naadToeslag" value="20" class="w-full bg-transparent text-xl font-bold text-gray-800 border-b-2 border-gray-300 focus:border-blue-600 outline-none pb-1">
+                </div>
+
+                <div class="bg-blue-50 p-5 rounded-xl border border-blue-200 flex items-start gap-4">
+                    <div class="pt-1">
+                        <input type="checkbox" id="magDraaien" checked class="w-6 h-6 text-blue-600 rounded cursor-pointer accent-blue-600">
+                    </div>
+                    <div>
+                        <label for="magDraaien" class="block font-bold text-blue-900 cursor-pointer text-lg">Doeken mogen roteren (90 graden)</label>
+                        <p class="text-sm text-blue-700 mt-1">Staat dit aan, dan mag het algoritme het doek draaien om beter op de rol te passen. Zet dit uit als weefrichting/patroon absoluut behouden moet blijven.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-4">
+                <button onclick="berekenInkoop()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-transform transform hover:-translate-y-1 text-lg">
+                    <i class="fa-solid fa-calculator mr-2"></i> Genereer Snijplan
                 </button>
             </div>
-
-            <div class="xl:col-span-3 space-y-6">
-                <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-bold text-slate-800">Orderlijst</h2>
-                        <span id="orderCount" class="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">0 orders</span>
-                    </div>
-                    
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead>
-                                <tr class="text-gray-400 border-b border-gray-100">
-                                    <th class="py-3 px-2 font-bold uppercase text-[10px]">Prio</th>
-                                    <th class="py-3 font-bold uppercase text-[10px]">ID</th>
-                                    <th class="py-3 font-bold uppercase text-[10px]">Materiaal / Kleur</th>
-                                    <th class="py-3 font-bold uppercase text-[10px]">Afmetingen (B x H)</th>
-                                    <th class="py-3 font-bold uppercase text-[10px]">Aantal</th>
-                                    <th class="py-3 font-bold uppercase text-[10px]">Deadline</th>
-                                    <th class="py-3 font-bold uppercase text-[10px]"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="orderTableBody" class="divide-y divide-gray-50">
-                                <tr>
-                                    <td colspan="7" class="py-12 text-center text-gray-400">
-                                        Importeer een bestand of klik op "Laad Voorbeelddata" om te beginnen.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <section id="resultaatSectie" class="hidden space-y-4">
-                    <h2 class="text-xl font-bold text-slate-800 border-b pb-2">Productie Advies (Batches)</h2>
-                    <div id="batchResultaten" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        </div>
-                </section>
-            </div>
         </div>
-    </div>
+
+        <div id="step-4" class="max-w-6xl w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden step-hidden p-8 transition-all">
+            
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 pb-4 border-b gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-check-double text-green-500 mr-2"></i> 3. Productie Advies</h2>
+                    <p class="text-sm text-gray-500 mt-1">Hieronder vind je de optimalisatie per Artikel/Kleurcombinatie.</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="goToStep(1)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-colors">
+                        Nieuw Project
+                    </button>
+                    <button onclick="exporteerCSV()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-colors text-sm">
+                        <i class="fa-solid fa-download mr-2"></i> Exporteer Resultaat
+                    </button>
+                </div>
+            </div>
+
+            <div id="batchResultaten" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                </div>
+            
+        </div>
+
+    </main>
 
     <script>
-        let orders = [];
+        let rawOrders = [];
+        let computedBatches = [];
 
-        // Bestand upload handler
-        document.getElementById('fileInput').addEventListener('change', handleFile, false);
+        // Workflow Navigatie
+        function goToStep(stepNumber) {
+            document.querySelectorAll('main > div').forEach(el => el.classList.add('step-hidden'));
+            document.getElementById(`step-${stepNumber}`).classList.remove('step-hidden');
+        }
+
+        // --- STAP 2: DRAG & DROP LOGICA ---
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFile({ target: fileInput });
+            }
+        });
+
+        fileInput.addEventListener('change', handleFile);
 
         function handleFile(e) {
             const file = e.target.files[0];
-            if(!file) return;
+            if (!file) return;
+            
             const reader = new FileReader();
             reader.onload = function(evt) {
+                // Lees data via SheetJS (werkt ook goed voor CSV met rare delimiters, maar laten we hem begeleiden voor CSV)
                 const data = evt.target.result;
                 const workbook = XLSX.read(data, { type: 'binary' });
                 const firstSheet = workbook.SheetNames[0];
-                const excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[firstSheet]);
-                processImport(excelRows);
+                
+                // Bij ruwe export CSV kan de delimiter ";" zijn. SheetJS herkent dit meestal, anders proberen we een generieke parse.
+                let rows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[firstSheet]);
+                processImportData(rows);
             };
             reader.readAsBinaryString(file);
         }
 
-        function processImport(rows) {
-            // Haal de ingestelde kolomnamen op
-            const colID = document.getElementById('mapID').value;
-            const colSoort = document.getElementById('mapSoort').value;
-            const colKleur = document.getElementById('mapKleur').value;
-            const colBreedte = document.getElementById('mapBreedte').value;
-            const colHoogte = document.getElementById('mapHoogte').value;
-            const colAantal = document.getElementById('mapAantal').value;
-            const colDeadline = document.getElementById('mapDeadline').value;
-            const colPrio = document.getElementById('mapPrio').value;
-
-            // Map de ruwe data via de ingestelde kolomnamen
-            orders = rows.map((row, index) => ({
-                id: row[colID] || `ONBEKEND-${index+1}`,
-                doeksoort: row[colSoort] || 'Standaard',
-                kleurcode: row[colKleur] || 'Onbekend',
-                breedte: parseInt(row[colBreedte]) || 0,
-                hoogte: parseInt(row[colHoogte]) || 0,
-                aantal: parseInt(row[colAantal]) || 1,
-                deadline: row[colDeadline] || '-',
-                prioriteit: parseInt(row[colPrio]) || 3
-            }));
-
-            // Filter lege rijen eruit
-            orders = orders.filter(o => o.breedte > 0 && o.hoogte > 0);
-
-            // Sorteren: Eerst Prioriteit (1 voor 5), dan Deadline
-            orders.sort((a, b) => a.prioriteit - b.prioriteit || new Date(a.deadline) - new Date(b.deadline));
-
-            renderOrders();
-            // Verberg resultaten bij nieuwe import
-            document.getElementById('resultaatSectie').classList.add('hidden');
+        function convertToMM(value) {
+            if(!value) return 0;
+            // Als het in de CSV staat als "2,538", maak er 2538 mm van.
+            let strVal = String(value).trim().replace(',', '.');
+            let num = parseFloat(strVal);
+            // Als de waarde rond de 1-10 is, zijn het waarschijnlijk meters. 
+            if(num < 50 && num > 0) return Math.round(num * 1000); 
+            return Math.round(num); // Als het al in mm stond (bijv. 2538)
         }
 
-        function laadTestData() {
-            // Stel de mappings in op de headers van onze testdata
-            document.getElementById('mapID').value = 'Referentie';
-            document.getElementById('mapSoort').value = 'Materiaal';
-            document.getElementById('mapKleur').value = 'Kleur';
-            document.getElementById('mapBreedte').value = 'Br';
-            document.getElementById('mapHoogte').value = 'Hg';
-            document.getElementById('mapAantal').value = 'Stuks';
-            document.getElementById('mapDeadline').value = 'GeleverdOp';
-            document.getElementById('mapPrio').value = 'Urgentie';
-
-            const testData = [
-                { "Referentie": "ORD-001", "Materiaal": "Screen 3%", "Kleur": "Antraciet", "Br": 2200, "Hg": 1500, "Stuks": 4, "GeleverdOp": "2026-06-01", "Urgentie": 2 },
-                { "Referentie": "ORD-002", "Materiaal": "Acryl", "Kleur": "Marineblauw", "Br": 1200, "Hg": 800, "Stuks": 8, "GeleverdOp": "2026-05-20", "Urgentie": 1 },
-                { "Referentie": "ORD-003", "Materiaal": "Screen 3%", "Kleur": "Antraciet", "Br": 2800, "Hg": 2200, "Stuks": 2, "GeleverdOp": "2026-06-05", "Urgentie": 3 },
-                { "Referentie": "ORD-004", "Materiaal": "Screen 5%", "Kleur": "Wit", "Br": 1500, "Hg": 2000, "Stuks": 5, "GeleverdOp": "2026-06-10", "Urgentie": 4 },
-                { "Referentie": "ORD-005", "Materiaal": "Acryl", "Kleur": "Marineblauw", "Br": 3000, "Hg": 1800, "Stuks": 1, "GeleverdOp": "2026-05-21", "Urgentie": 1 }
-            ];
-
-            processImport(testData);
+        function processImportData(rows) {
+            rawOrders = [];
             
-            // Toon kleine visuele feedback op de knop
-            alert("Testdata succesvol geladen! Je kunt nu op 'Genereer Snijplan' klikken.");
+            rows.forEach(row => {
+                // Controleer flexibel op header-namen uit je opgestuurde CSV structuur
+                let orderNr = row['Verkoopordernummer'] || row['Order'] || '-';
+                let desc = row['Artikelomschrijving'] || row['Omschrijving'] || 'Onbekend Materiaal';
+                let aantal = parseInt(row['Orderhoeveelheid'] || row['Bevestigd hoeveelheid']) || 1;
+                let leverdatum = row['Leverdatum'] || '-';
+                
+                // Lengte en Breedte in mm omzetten
+                let lengteMM = convertToMM(row['Lengte'] || row['Afmeting 1'] || 0);
+                let breedteMM = convertToMM(row['Breedte'] || row['Afmeting 2'] || 0);
+                
+                if (lengteMM > 0 && breedteMM > 0) {
+                    rawOrders.push({
+                        orderNr: orderNr,
+                        omschrijving: desc,
+                        lengte: lengteMM,
+                        breedte: breedteMM,
+                        aantal: aantal,
+                        leverdatum: leverdatum
+                    });
+                }
+            });
+
+            if(rawOrders.length > 0) {
+                renderTable();
+                document.getElementById('tablePreview').classList.remove('hidden');
+            } else {
+                alert("Geen geldige orders gevonden. Check de kolomnamen in je export.");
+            }
         }
 
-        function renderOrders() {
-            const body = document.getElementById('orderTableBody');
-            const count = document.getElementById('orderCount');
-            body.innerHTML = '';
-            count.innerText = `${orders.length} orders`;
+        function renderTable() {
+            const tbody = document.getElementById('orderTableBody');
+            document.getElementById('orderCount').innerText = `${rawOrders.length} orders gevonden`;
+            tbody.innerHTML = '';
 
-            orders.forEach((order, index) => {
-                const row = document.createElement('tr');
-                row.className = `priority-${order.prioriteit} hover:bg-slate-50 transition-colors`;
-                row.innerHTML = `
-                    <td class="py-3 px-2 font-bold text-slate-700">${order.prioriteit}</td>
-                    <td class="py-3 text-slate-500 font-mono text-xs">${order.id}</td>
-                    <td class="py-3">
-                        <span class="block font-bold text-sm text-slate-800">${order.doeksoort}</span>
-                        <span class="text-xs text-slate-500 flex items-center gap-1">
-                            <span class="w-2 h-2 rounded-full bg-slate-300"></span> ${order.kleurcode}
-                        </span>
-                    </td>
-                    <td class="py-3 font-medium text-slate-700">${order.breedte} x ${order.hoogte} <span class="text-[10px] text-slate-400">mm</span></td>
-                    <td class="py-3 font-bold text-indigo-600">${order.aantal}x</td>
-                    <td class="py-3 text-xs text-slate-600">${order.deadline}</td>
-                    <td class="py-3 text-right pr-2">
-                        <button onclick="verwijderOrder(${index})" class="text-slate-300 hover:text-red-500 transition-colors" title="Verwijder">&times;</button>
-                    </td>
+            // We tonen de eerste 50 voor preview
+            rawOrders.slice(0, 50).forEach(order => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-mono text-gray-600">${order.orderNr}</td>
+                    <td class="py-3 px-4 text-gray-800 font-medium max-w-xs truncate" title="${order.omschrijving}">${order.omschrijving}</td>
+                    <td class="py-3 px-4 font-mono text-blue-600">${order.lengte} x ${order.breedte}</td>
+                    <td class="py-3 px-4 font-bold">${order.aantal}x</td>
+                    <td class="py-3 px-4 text-gray-500">${order.leverdatum}</td>
                 `;
-                body.appendChild(row);
+                tbody.appendChild(tr);
             });
         }
 
-        function verwijderOrder(index) {
-            orders.splice(index, 1);
-            renderOrders();
-        }
 
+        // --- STAP 3/4: BEREKENING & RESULTAAT ---
         function berekenInkoop() {
-            if(orders.length === 0) return alert("Voeg eerst orders toe (of laad de testdata) voordat je berekent.");
-
             const rolBreedte = parseInt(document.getElementById('rolBreedte').value);
             const rolLengte = parseInt(document.getElementById('rolLengte').value);
             const naad = parseInt(document.getElementById('naadToeslag').value);
             const magDraaien = document.getElementById('magDraaien').checked;
 
-            const resultSectie = document.getElementById('resultaatSectie');
             const batchContainer = document.getElementById('batchResultaten');
-            resultSectie.classList.remove('hidden');
             batchContainer.innerHTML = '';
+            computedBatches = []; // Reset voor export
 
-            // Groepeer
+            // Groepeer simpelweg op "Artikelomschrijving" (want daar staat soort/kleur in)
             const groepen = {};
-            orders.forEach(o => {
-                const sleutel = `${o.doeksoort} | ${o.kleurcode}`;
-                if (!groepen[sleutel]) groepen[sleutel] = [];
-                groepen[sleutel].push(o);
+            rawOrders.forEach(o => {
+                if (!groepen[o.omschrijving]) groepen[o.omschrijving] = [];
+                groepen[o.omschrijving].push(o);
             });
 
-            // Bereken
-            for (const [titel, batchOrders] of Object.entries(groepen)) {
-                let benodigdeLengte = 0;
+            for (const [artikel, orders] of Object.entries(groepen)) {
+                let lengteNodig = 0;
                 let totaalOppervlakte = 0;
-                let totaalDoeken = 0;
+                let totaalStuks = 0;
 
-                batchOrders.forEach(o => {
+                orders.forEach(o => {
+                    // Hier is Lengte x Breedte uit CSV. We kijken hoe het op Rolbreedte past.
                     let w = o.breedte + naad;
-                    let h = o.hoogte + naad;
+                    let l = o.lengte + naad;
                     
-                    for(let i=0; i<o.aantal; i++) {
-                        let snijLengte = h;
-                        if (magDraaien && h > rolBreedte && w <= rolBreedte) {
-                            snijLengte = w;
-                        } else if (w > rolBreedte) {
+                    for(let i=0; i < o.aantal; i++) {
+                        let snijLengte = l; // We snijden standaard de lengte eraf
+                        
+                        // Kijk of doek gedraaid mag/moet worden
+                        if (magDraaien && l <= rolBreedte && w > rolBreedte) {
                             snijLengte = w; 
+                        } else if (!magDraaien && w > rolBreedte) {
+                            // Waarschuwing logica: past niet zonder draaien
+                            snijLengte = l;
                         }
-                        benodigdeLengte += snijLengte;
-                        totaalOppervlakte += (o.breedte * o.hoogte);
-                        totaalDoeken++;
+
+                        lengteNodig += snijLengte;
+                        totaalOppervlakte += (o.breedte * o.lengte);
+                        totaalStuks++;
                     }
                 });
 
-                const meters = (benodigdeLengte / 1000).toFixed(2);
-                let benutting = ((totaalOppervlakte / (benodigdeLengte * rolBreedte)) * 100).toFixed(1);
-                if(isNaN(benutting)) benutting = 0;
+                const meters = (lengteNodig / 1000).toFixed(2);
+                let benutting = ((totaalOppervlakte / (lengteNodig * rolBreedte)) * 100).toFixed(1);
+                if(isNaN(benutting) || lengteNodig === 0) benutting = 0;
+                
+                // Opslaan voor export
+                computedBatches.push({ 
+                    artikel: artikel, 
+                    stuks: totaalStuks, 
+                    metersNodig: meters, 
+                    benuttingProc: benutting 
+                });
 
-                // Achtergrondkleur voor benuttingsbalk (rood/geel/groen)
-                let barColor = 'bg-indigo-500';
-                if(benutting < 60) barColor = 'bg-red-400';
-                else if(benutting < 80) barColor = 'bg-amber-400';
-                else barColor = 'bg-emerald-500';
+                // Kleurindicator
+                let barColor = benutting < 60 ? 'bg-red-500' : (benutting < 80 ? 'bg-orange-400' : 'bg-green-500');
 
-                const batchDiv = document.createElement('div');
-                batchDiv.className = "bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow";
-                batchDiv.innerHTML = `
-                    <div class="flex justify-between items-start mb-4 border-b border-slate-100 pb-3">
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-lg">${titel.split('|')[0]}</h3>
-                            <p class="text-sm font-medium text-slate-500">${titel.split('|')[1]}</p>
-                            <p class="text-xs text-slate-400 mt-1">${titel.split('|')[1]}</p>
+                // Bouw UI
+                const div = document.createElement('div');
+                div.className = "bg-white border border-gray-200 rounded-xl p-6 shadow-sm";
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-4 border-b border-gray-100 pb-4">
+                        <div class="pr-4">
+                            <h3 class="font-bold text-gray-800 text-sm line-clamp-2">${artikel}</h3>
+                            <p class="text-xs text-gray-500 mt-2"><i class="fa-solid fa-layer-group"></i> ${totaalStuks} stuks te snijden</p>
                         </div>
                         <div class="text-right">
-                            <span class="text-3xl font-black text-indigo-600">${meters}<span class="text-lg">m</span></span>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase mt-1">Benodigd (rol)</p>
+                            <span class="text-3xl font-black text-blue-600">${meters}<span class="text-lg">m</span></span>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">rol nodig</p>
                         </div>
                     </div>
-                    <div class="flex justify-between text-xs mb-1 font-bold text-slate-600">
-                        <span>Efficiëntie</span>
+                    <div class="mb-1 flex justify-between items-center text-xs font-bold text-gray-600">
+                        <span>Materiaal Benutting</span>
                         <span>${benutting}%</span>
                     </div>
-                    <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden flex border border-slate-200">
+                    <div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden flex">
                         <div class="${barColor} h-full transition-all duration-1000" style="width: ${benutting}%"></div>
                     </div>
-                    <div class="mt-4 flex justify-between text-xs text-slate-500">
-                        <span>Aantal doeken: <b>${totaalDoeken}</b></span>
-                        <span>Orders in batch: <b>${batchOrders.length}</b></span>
-                    </div>
                 `;
-                batchContainer.appendChild(batchDiv);
+                batchContainer.appendChild(div);
             }
+
+            goToStep(4);
+        }
+
+        // --- STAP 4: EXPORT FUNCTIE ---
+        function exporteerCSV() {
+            if (computedBatches.length === 0) return;
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            // Header
+            csvContent += "Artikelomschrijving;Aantal_Stuks;Benodigde_Meters;Benutting_Percentage\n";
             
-            // Scroll soepel naar resultaten
-            resultSectie.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Rijen
+            computedBatches.forEach(b => {
+                // Vervang eventuele puntkomma's in omschrijving om CSV niet kapot te maken
+                let cleanArtikel = b.artikel.replace(/;/g, ',');
+                csvContent += `${cleanArtikel};${b.stuks};${b.metersNodig};${b.benuttingProc}%\n`;
+            });
+
+            // Trigger download
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Productie_Advies_Solfaction.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
