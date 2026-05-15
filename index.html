@@ -302,4 +302,191 @@
                 }
 
                 // STAP B: Nieuwe Rollen
-                if
+                if (unpackedOrders.length > 0) {
+                    let bestResult = null;
+                    availableWidths.forEach(testBreedte => {
+                        let result = packOrdersWithConstraint(unpackedOrders, testBreedte, 9999999, naad);
+                        if (!bestResult || result.efficiency > bestResult.efficiency) bestResult = result;
+                    });
+                    bestResult.artikel = artikel;
+                    bestResult.deadline_raw = earliestDeadlineRaw; bestResult.deadline_sort = earliestDeadlineSort;
+                    computedBatches.push(bestResult);
+                }
+            });
+
+            // Update Labels & Globale Efficiëntie
+            computedBatches.forEach(res => {
+                res.packed.forEach(p => { labelsData.push({ orderNr: p.id, desc: res.artikel, afm: `${p.w_orig}x${p.l_orig}mm` }); });
+                totalAreaGlobal += res.totalAreaPacked;
+                totalRolAreaGlobal += (res.rolBreedte * res.lengte);
+            });
+
+            let globEff = totalRolAreaGlobal > 0 ? Math.round((totalAreaGlobal / totalRolAreaGlobal) * 100) : 0;
+            document.getElementById('global-efficiency').innerText = globEff + "%";
+            
+            // Pas de vulkleur van het blaadje aan o.b.v score
+            let fillEl = document.getElementById('global-eff-fill');
+            fillEl.style.height = globEff + "%";
+            fillEl.className = `absolute bottom-0 w-full transition-all duration-1000 ${globEff < 70 ? 'bg-red-500' : (globEff < 85 ? 'bg-amber-400' : 'bg-green-500')}`;
+
+            document.getElementById('batch-count').innerText = `${computedBatches.length} Batches berekend`;
+
+            // Standaard Sorteren op "Aanbevolen" en renderen
+            sorteerBatches('aanbevolen');
+            goToStep(3);
+        }
+
+        function packOrdersWithConstraint(orders, rolBreedte, maxLengte, naad) {
+            let itemsToPack = [];
+            orders.forEach(o => {
+                for(let i=0; i < o.aantal; i++) { itemsToPack.push({ id: o.orderNr, w: o.breedte + naad, l: o.lengte + naad, w_orig: o.breedte, l_orig: o.lengte }); }
+            });
+            itemsToPack.sort((a,b) => Math.max(b.w, b.l) - Math.max(a.w, a.l));
+
+            let shelves = []; let packedItems = []; let remainingItems = []; let totalAreaPacked = 0;
+
+            itemsToPack.forEach(item => {
+                let pw = item.w, pl = item.l;
+                if (Math.max(item.w, item.l) <= rolBreedte) { if (item.l > item.w) { pw = item.w; pl = item.l; } else { pw = item.l; pl = item.w; } } 
+                else if (item.w <= rolBreedte) { pw = item.w; pl = item.l; } else if (item.l <= rolBreedte) { pw = item.l; pl = item.w; } else { pw = item.w; pl = item.l; }
+
+                let placed = false;
+                for(let s of shelves) {
+                    if (s.usedWidth + pw <= rolBreedte) {
+                        packedItems.push({ x: s.usedWidth, y: s.startY, w: pw, l: pl, id: item.id, w_orig: item.w_orig, l_orig: item.l_orig });
+                        s.usedWidth += pw; s.height = Math.max(s.height, pl); totalAreaPacked += (item.w_orig * item.l_orig); placed = true; break;
+                    }
+                }
+                if (!placed) {
+                    let startY = shelves.reduce((sum, s) => sum + s.height, 0);
+                    if (startY + pl <= maxLengte) {
+                        packedItems.push({ x: 0, y: startY, w: pw, l: pl, id: item.id, w_orig: item.w_orig, l_orig: item.l_orig });
+                        shelves.push({ startY: startY, height: pl, usedWidth: pw }); totalAreaPacked += (item.w_orig * item.l_orig);
+                    } else { remainingItems.push(item); }
+                }
+            });
+
+            let remGroups = {};
+            remainingItems.forEach(i => {
+                if(!remGroups[i.id]) remGroups[i.id] = { orderNr: i.id, breedte: i.w_orig, lengte: i.l_orig, aantal: 0 }; remGroups[i.id].aantal++;
+            });
+
+            let benodigdeLengte = shelves.reduce((sum, s) => sum + s.height, 0);
+            let efficiency = benodigdeLengte > 0 ? (totalAreaPacked / (rolBreedte * benodigdeLengte)) * 100 : 0;
+
+            return { 
+                rolBreedte: rolBreedte, lengte: benodigdeLengte, maxLengte: maxLengte,
+                efficiency: parseFloat(Math.min(efficiency, 100).toFixed(1)),
+                totalAreaPacked: totalAreaPacked, packed: packedItems, remainingOrders: Object.values(remGroups), stuks: packedItems.length
+            };
+        }
+
+        // --- SORTEREN & RENDEREN ---
+        function sorteerBatches(criteria) {
+            // Update UI knoppen
+            document.querySelectorAll('.sort-btn').forEach(b => {
+                b.classList.remove('bg-slate-100', 'text-slate-800');
+                b.classList.add('text-slate-500');
+            });
+            document.getElementById(`btn-sort-${criteria}`).classList.remove('text-slate-500');
+            document.getElementById(`btn-sort-${criteria}`).classList.add('bg-slate-100', 'text-slate-800');
+
+            // Sorteer logica
+            let sorted = [...computedBatches];
+            if (criteria === 'aanbevolen') {
+                // Reststukken eerst, daarna op efficiëntie
+                sorted.sort((a,b) => (b.isOffcut === a.isOffcut) ? b.efficiency - a.efficiency : (a.isOffcut ? -1 : 1));
+            } else if (criteria === 'efficiency') {
+                // Puur op efficiëntie
+                sorted.sort((a,b) => b.efficiency - a.efficiency);
+            } else if (criteria === 'deadline') {
+                // Vroegste deadline bovenaan
+                sorted.sort((a,b) => a.deadline_sort.localeCompare(b.deadline_sort));
+            }
+
+            // Render
+            const container = document.getElementById('batchResultaten');
+            container.innerHTML = '';
+            sorted.forEach(renderBatchCard);
+        }
+
+        function renderBatchCard(data) {
+            let colorScale = data.efficiency < 70 ? 'bg-red-500' : (data.efficiency < 85 ? 'bg-amber-400' : 'bg-green-500');
+            let m = (data.lengte / 1000).toFixed(2);
+            let pixelsPerMM = 140 / data.rolBreedte;
+            let visualWidth = (data.isOffcut ? data.maxLengte : data.lengte) * pixelsPerMM;
+            
+            let badge = data.isOffcut ? `<span class="bg-yellow-100 text-yellow-700 border border-yellow-300 text-[10px] px-2 py-0.5 rounded-full ml-2 uppercase font-black tracking-wide shadow-sm"><i class="fa-solid fa-recycle mr-1"></i> Reststuk Inzet</span>` : '';
+            let bgCard = data.isOffcut ? 'bg-yellow-50/30' : 'bg-white';
+
+            let html = `
+                <div class="${bgCard} border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden break-inside-avoid flex flex-col">
+                    
+                    <div class="p-5 border-b border-slate-100 flex justify-between items-start">
+                        <div class="pr-4">
+                            <h3 class="font-bold text-slate-800 text-lg leading-tight">${data.artikel} ${badge}</h3>
+                            <div class="flex gap-3 mt-2 text-xs font-medium text-slate-500">
+                                <span><i class="fa-solid fa-layer-group text-slate-400 mr-1"></i> ${data.stuks} stuks</span>
+                                <span class="${data.deadline_raw !== '-' ? 'text-blue-600' : ''}"><i class="fa-regular fa-calendar text-slate-400 mr-1"></i> ${data.deadline_raw}</span>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${data.isOffcut ? 'Breedte Reststuk' : 'Inkoop Rolbreedte'}</p>
+                            <span class="text-2xl font-black text-slate-800">${data.rolBreedte}<span class="text-sm text-slate-500 font-bold ml-1">mm</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-5 bg-slate-50/50 flex items-center justify-between gap-6 border-b border-slate-100">
+                        <div class="w-1/3">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Materiaal Nodig</p>
+                            <span class="text-3xl font-black text-blue-600">${m}<span class="text-lg">m</span></span>
+                        </div>
+                        <div class="w-2/3">
+                            <div class="flex justify-between items-end mb-1">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Benutting / Efficiëntie</span>
+                                <span class="text-lg font-black text-slate-700">${data.efficiency}%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden shadow-inner">
+                                <div class="${colorScale} h-full transition-all" style="width: ${data.efficiency}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-5 flex-grow">
+                        <div class="nesting-container">
+                            <div class="nesting-roll ${data.isOffcut ? 'offcut-roll' : ''}" style="width: ${visualWidth}px;">
+                                ${data.packed.map(p => {
+                                    return `<div class="nesting-piece rounded-[1px]" style="left:${p.y * pixelsPerMM}px; top:${p.x * pixelsPerMM}px; width:${p.l * pixelsPerMM}px; height:${p.w * pixelsPerMM}px;" title="${p.id} (${p.w_orig}x${p.l_orig})">${p.id}</div>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('batchResultaten').innerHTML += html;
+        }
+
+        // --- EXPORTS ---
+        function exporteerCSV() {
+            let csv = "data:text/csv;charset=utf-8,Omschrijving;Deadline;Type;Rolbreedte_MM;Benodigde_Meters;Snij_Benutting;Aantal_Stuks\n" + 
+                      computedBatches.map(b => `${b.artikel.replace(/;/g, ',')};${b.deadline_raw};${b.isOffcut ? 'Restvoorraad' : 'Nieuw'};${b.rolBreedte};${(b.lengte/1000).toFixed(2)};${b.efficiency}%;${b.stuks}`).join("\n");
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csv)); link.setAttribute("download", "Productie_Advies.csv");
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+        function printWerkbon() {
+            let d = new Date(); document.getElementById('print-date').innerText = "Geprint op: " + d.toLocaleString('nl-NL');
+            document.getElementById('werkbon-content').innerHTML = document.getElementById('batchResultaten').innerHTML;
+            document.body.classList.add('print-werkbon'); window.print(); setTimeout(() => { document.body.classList.remove('print-werkbon'); }, 500);
+        }
+        function printLabels() {
+            const container = document.getElementById('label-container'); container.innerHTML = '';
+            labelsData.forEach((label, i) => {
+                let div = document.createElement('div'); div.className = 'label-item flex flex-col justify-center items-center text-center';
+                div.innerHTML = `<div class="font-bold text-xs uppercase text-slate-500 mb-2 truncate w-full">${label.desc}</div><svg id="barcode-${i}"></svg><div class="font-black text-xl mt-2">${label.afm}</div>`;
+                container.appendChild(div); JsBarcode(`#barcode-${i}`, label.orderNr, { format: "CODE128", width: 2, height: 40, displayValue: true, fontSize: 14 });
+            });
+            document.body.classList.add('print-labels'); window.print(); setTimeout(() => { document.body.classList.remove('print-labels'); }, 500);
+        }
+    </script>
+</body>
+</html>
