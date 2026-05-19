@@ -6,7 +6,919 @@
     <title>RollNest Pro - 2D Nesting & Batching Optimizer</title>
     <!-- Icons and Styles -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="index.css">
+    <style>
+/* RollNest Pro - Premium Design System */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+    --bg-primary: #090c10;
+    --bg-secondary: #0d1117;
+    --bg-tertiary: #161b22;
+    --border-color: rgba(240, 246, 252, 0.1);
+    --border-hover: rgba(240, 246, 252, 0.25);
+    
+    --text-primary: #c9d1d9;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+    
+    --accent-blue: #58a6ff;
+    --accent-blue-hover: #1f6feb;
+    --accent-cyan: #39c5cf;
+    --accent-green: #3fb950;
+    --accent-green-bg: rgba(63, 185, 80, 0.1);
+    --accent-red: #f85149;
+    --accent-red-bg: rgba(248, 81, 73, 0.1);
+    --accent-orange: #f0883e;
+    --accent-purple: #bc8cff;
+    
+    --shadow-sm: 0 1px 0 rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.2);
+    --shadow-lg: 0 12px 28px rgba(0,0,0,0.4);
+    
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Light Theme Variables */
+[data-theme="light"] {
+    --bg-primary: #f4f6f8;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f8fafc;
+    --border-color: rgba(0, 0, 0, 0.08);
+    --border-hover: rgba(0, 0, 0, 0.15);
+    
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    
+    --accent-blue: #2563eb;
+    --accent-blue-hover: #1d4ed8;
+    --accent-cyan: #06b6d4;
+    --accent-green: #10b981;
+    --accent-green-bg: rgba(16, 185, 129, 0.08);
+    --accent-red: #ef4444;
+    --accent-red-bg: rgba(239, 68, 68, 0.08);
+    --accent-orange: #f97316;
+    --accent-purple: #8b5cf6;
+    
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    overflow-x: hidden;
+    transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    border: 2px solid var(--bg-primary);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* App Layout */
+.app-container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Sidebar Styling */
+.sidebar {
+    width: 260px;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    flex-shrink: 0;
+    z-index: 10;
+    transition: width var(--transition-normal);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+    padding-left: 8px;
+}
+
+.logo-icon {
+    font-size: 24px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.logo-text {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #ffffff, #c9d1d9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+[data-theme="light"] .logo-text {
+    background: linear-gradient(135deg, #090c10, #1e293b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.nav-menu {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-grow: 1;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--transition-fast);
+}
+
+.nav-item i {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+.nav-item:hover, .nav-item.active {
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+}
+
+.nav-item.active {
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    color: var(--accent-blue);
+}
+
+.sidebar-footer {
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.system-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent-green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-green);
+    animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(63, 185, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0); }
+}
+
+/* Main Workspace */
+.main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Top Header */
+.top-header {
+    height: 70px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: justify;
+    padding: 0 32px;
+    flex-shrink: 0;
+}
+
+.header-title-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
+
+.header-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: auto;
+}
+
+/* Buttons System */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border: 1px solid transparent;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: var(--accent-blue);
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-blue-hover);
+}
+
+.btn-secondary {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    border-color: var(--border-hover);
+    background-color: var(--bg-secondary);
+}
+
+.btn-icon {
+    padding: 10px;
+    border-radius: var(--radius-md);
+    width: 38px;
+    height: 38px;
+}
+
+/* View Content Container */
+.view-panel {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 32px;
+    display: none;
+}
+
+.view-panel.active {
+    display: block;
+}
+
+/* Dashboard Design */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.stat-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-card-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.stat-card-value {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.stat-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.trend-indicator {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+.trend-up { color: var(--accent-green); }
+.trend-down { color: var(--accent-red); }
+
+.stat-card-glow {
+    position: absolute;
+    right: -20px;
+    bottom: -20px;
+    font-size: 80px;
+    opacity: 0.03;
+    pointer-events: none;
+}
+
+/* Double Grid Structure for Workspace Dashboard */
+.db-layout-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+}
+
+/* Nesting Step UI */
+.step-indicator-bar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    padding: 16px 32px;
+    border-radius: var(--radius-md);
+}
+
+.step-indicator-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0.4;
+    transition: var(--transition-fast);
+}
+
+.step-indicator-item.active {
+    opacity: 1;
+    color: var(--accent-blue);
+}
+
+.step-indicator-item.completed {
+    opacity: 0.8;
+    color: var(--accent-green);
+}
+
+.step-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: var(--bg-tertiary);
+    border: 1.5px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.step-indicator-item.active .step-number {
+    border-color: var(--accent-blue);
+    background-color: rgba(88, 166, 255, 0.1);
+}
+
+.step-indicator-item.completed .step-number {
+    border-color: var(--accent-green);
+    background-color: var(--accent-green-bg);
+}
+
+.step-pane {
+    display: none;
+}
+
+.step-pane.active {
+    display: block;
+}
+
+/* Forms & Tables */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+.form-control {
+    width: 100%;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    transition: var(--transition-fast);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+}
+
+.form-row > * {
+    flex: 1;
+}
+
+/* Custom Table Design */
+.table-container {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-secondary);
+    margin-bottom: 24px;
+}
+
+.custom-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 13px;
+}
+
+.custom-table th {
+    background-color: var(--bg-tertiary);
+    padding: 14px 18px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.custom-table td {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.custom-table tr:last-child td {
+    border-bottom: none;
+}
+
+.custom-table tr:hover td {
+    background-color: rgba(255,255,255,0.01);
+}
+
+/* Drag & Drop Zone */
+.upload-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    background-color: var(--bg-secondary);
+    margin-bottom: 24px;
+}
+
+.upload-zone:hover {
+    border-color: var(--accent-blue);
+    background-color: var(--bg-tertiary);
+}
+
+.upload-icon {
+    font-size: 36px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+/* Dynamic Leaf Radial Yield Progress Meter */
+.leaf-meter-container {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.leaf-meter-svg {
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+}
+
+.leaf-meter-track {
+    fill: none;
+    stroke: var(--bg-tertiary);
+    stroke-width: 8;
+}
+
+.leaf-meter-fill {
+    fill: none;
+    stroke: var(--accent-blue);
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease-in-out;
+}
+
+.leaf-meter-value {
+    position: absolute;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+/* interactive Visualizer Layout */
+.nesting-workspace-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    height: calc(100vh - 280px);
+    min-height: 500px;
+}
+
+.nesting-sidebar {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+}
+
+.nesting-canvas-panel {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.canvas-toolbar {
+    height: 50px;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background-color: var(--bg-tertiary);
+}
+
+.canvas-container {
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+}
+
+.canvas-container:active {
+    cursor: grabbing;
+}
+
+canvas#nestingCanvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+/* Detail Card overlays on canvas */
+.canvas-hint {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background-color: rgba(22, 27, 34, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-color);
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    color: var(--text-secondary);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Offcut Alert overlay */
+.offcut-card {
+    background: linear-gradient(135deg, rgba(240, 136, 62, 0.05), rgba(88, 166, 255, 0.05));
+    border: 1px solid var(--accent-orange);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+/* Inventory Badge indicator */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 50px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.badge-blue { background-color: rgba(88, 166, 255, 0.12); color: var(--accent-blue); border: 1px solid rgba(88, 166, 255, 0.3); }
+.badge-green { background-color: var(--accent-green-bg); color: var(--accent-green); border: 1px solid rgba(63, 185, 80, 0.3); }
+.badge-orange { background-color: rgba(240, 136, 62, 0.12); color: var(--accent-orange); border: 1px solid rgba(240, 136, 62, 0.3); }
+.badge-purple { background-color: rgba(188, 140, 255, 0.12); color: var(--accent-purple); border: 1px solid rgba(188, 140, 255, 0.3); }
+
+/* API Playground View styles */
+.api-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.api-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.code-editor-header {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+}
+
+.code-editor {
+    background-color: #0d1117;
+    border: 1px solid var(--border-color);
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: #e6edf3;
+    width: 100%;
+    min-height: 300px;
+    resize: vertical;
+    outline: none;
+    line-height: 1.6;
+}
+
+.api-console-output {
+    background-color: #040406;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: #8be9fd;
+    overflow-x: auto;
+    max-height: 450px;
+    white-space: pre-wrap;
+}
+
+/* Tabs system */
+.tabs-container {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 24px;
+}
+
+.tab-btn {
+    padding: 12px 20px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition-fast);
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+}
+
+.tab-btn.active {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+}
+
+/* Modal styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(4, 4, 6, 0.8);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* Barcode visualization */
+.barcode-svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Print Overrides */
+@media print {
+    body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    
+    .sidebar, .top-header, .btn, .canvas-toolbar, .step-indicator-bar, .canvas-hint, .view-panel:not(.print-active) {
+        display: none !important;
+    }
+    
+    .view-panel.print-active {
+        display: block !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        width: 100% !important;
+    }
+    
+    .print-sheet {
+        page-break-after: always;
+        width: 100% !important;
+        color: #000000 !important;
+    }
+    
+    .print-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+/* Utility Animations */
+@keyframes pulse-cyan {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.pulse-glow-cyan {
+    animation: pulse-cyan 3s infinite ease-in-out;
+}
+
+
+/* Inline Utilities */
+.flex { display: flex !important; }
+.flex-col { flex-direction: column !important; }
+.justify-center { justify-content: center !important; }
+.items-center { align-items: center !important; }
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
+.gap-4 { gap: 16px !important; }
+.gap-2 { gap: 8px !important; }
+.text-red-500 { color: var(--accent-red) !important; }
+.font-bold { font-weight: 700 !important; }
+.font-mono { font-family: var(--font-mono) !important; }
+
+</style>
 </head>
 <body>
     <div class="app-container">
@@ -785,7 +1697,1990 @@ print("Yield %:", response.json()["efficiency"])</div>
 
     <!-- Script Imports -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js"></script>
-    <script src="api-playground.js"></script>
+    <script>
+/**
+ * RollNest Pro - Core Application Script
+ * Highly-optimized 2D Bin Packing, Interactive Canvas Overrides, Inventory Persistence, and Vector Export utilities.
+ */
+
+// Global State
+let db = null;
+let currentView = 'dashboard';
+let currentStep = 1;
+let activeOrders = [];
+let computedBatches = [];
+let selectedBatch = null;
+
+// Canvas Visualizer State
+let canvas, ctx;
+let zoom = 1.0;
+let panX = 0;
+let panY = 0;
+let isDraggingCanvas = false;
+let startX, startY;
+let dragSelectedPiece = null;
+let dragOffset = { x: 0, y: 0 };
+let isCollisionDetected = false;
+let canvasInteractionActive = false;
+
+// 1. DATABASE & PERSISTENCE (IndexedDB)
+function initDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('RollNestProDB', 1);
+        
+        request.onupgradeneeded = function(e) {
+            const database = e.target.result;
+            
+            // Stock inventory store
+            if (!database.objectStoreNames.contains('stock')) {
+                const stockStore = database.createObjectStore('stock', { keyPath: 'id', autoIncrement: true });
+                stockStore.createIndex('width', 'width', { unique: false });
+            }
+            
+            // Batches history store
+            if (!database.objectStoreNames.contains('batches')) {
+                database.createObjectStore('batches', { keyPath: 'id' });
+            }
+            
+            // Settings store
+            if (!database.objectStoreNames.contains('settings')) {
+                database.createObjectStore('settings', { keyPath: 'key' });
+            }
+        };
+        
+        request.onsuccess = function(e) {
+            db = e.target.result;
+            console.log('IndexedDB initialized successfully.');
+            
+            // Load default settings if not exists
+            loadDefaultSettings().then(() => {
+                seedInitialStock().then(() => {
+                    resolve();
+                });
+            });
+        };
+        
+        request.onerror = function(e) {
+            console.error('IndexedDB initialization failed:', e.target.error);
+            reject(e.target.error);
+        };
+    });
+}
+
+function loadDefaultSettings() {
+    return new Promise((resolve) => {
+        const tx = db.transaction('settings', 'readwrite');
+        const store = tx.objectStore('settings');
+        
+        const defaults = [
+            { key: 'default_seam', value: 4 },
+            { key: 'default_margin', value: 10 },
+            { key: 'currency', value: '€' },
+            { key: 'theme', value: 'dark' }
+        ];
+        
+        let pending = defaults.length;
+        defaults.forEach(def => {
+            const req = store.get(def.key);
+            req.onsuccess = function() {
+                if (req.result === undefined) {
+                    store.put(def);
+                }
+                pending--;
+                if (pending === 0) resolve();
+            };
+        });
+    });
+}
+
+function seedInitialStock() {
+    return new Promise((resolve) => {
+        const tx = db.transaction('stock', 'readwrite');
+        const store = tx.objectStore('stock');
+        const req = store.getAll();
+        
+        req.onsuccess = function() {
+            if (req.result.length === 0) {
+                const initial = [
+                    { description: 'Premium Frontlit PVC Banner 450g', type: 'Banner', width: 1600, length: 50000, cost: 3.50, origin: 'new' },
+                    { description: 'Orajet 3162 PVC Film Glans Wit', type: 'Vinyl', width: 1370, length: 50000, cost: 4.80, origin: 'new' },
+                    { description: 'Artist Canvas Premium Matte', type: 'Canvas', width: 1520, length: 18000, cost: 8.50, origin: 'new' },
+                    { description: 'Reststuk Orajet 3162 (Leftover)', type: 'Vinyl', width: 1370, length: 8200, cost: 4.80, origin: 'offcut' }
+                ];
+                initial.forEach(item => store.add(item));
+            }
+            resolve();
+        };
+    });
+}
+
+// Helper: Get Settings
+function getSetting(key) {
+    return new Promise((resolve) => {
+        const tx = db.transaction('settings', 'readonly');
+        const store = tx.objectStore('settings');
+        const req = store.get(key);
+        req.onsuccess = function() {
+            resolve(req.result ? req.result.value : null);
+        };
+    });
+}
+
+function putSetting(key, value) {
+    return new Promise((resolve) => {
+        const tx = db.transaction('settings', 'readwrite');
+        const store = tx.objectStore('settings');
+        store.put({ key: key, value: value });
+        tx.oncomplete = resolve;
+    });
+}
+
+// 2. CORE NESTING & BIN PACKING ALGORITHMS
+// Sort orders by area/dimension descending
+function sortItemsDecreasing(items) {
+    return [...items].sort((a, b) => {
+        const areaA = a.w * a.l;
+        const areaB = b.w * b.l;
+        if (areaB !== areaA) return areaB - areaA;
+        return Math.max(b.w, b.l) - Math.max(a.w, a.l);
+    });
+}
+
+/**
+ * 2D Guillotine Packing Engine
+ * Fits items using perpendicular straight cuts, tracking available free rectangular areas.
+ */
+function packGuillotine(itemsToPack, rolBreedte, maxLengte, seam, margins) {
+    const minW = margins.sides * 2;
+    const usableWidth = rolBreedte - (margins.sides * 2);
+    const usableLength = maxLengte - (margins.top + margins.bottom);
+    
+    let freeRects = [{ x: margins.sides, y: margins.top, w: usableWidth, h: usableLength }];
+    let packedItems = [];
+    let remainingItems = [];
+    let totalAreaPacked = 0;
+    
+    itemsToPack.forEach(item => {
+        let placed = false;
+        let bestRectIdx = -1;
+        let bestFitScore = Infinity; // Best-Area-Fit
+        let rotatePlacement = false;
+        
+        // Find best free rectangle
+        for (let i = 0; i < freeRects.length; i++) {
+            const fr = freeRects[i];
+            
+            // Try standard orientation
+            if (item.w <= fr.w && item.l <= fr.h) {
+                const areaWaste = (fr.w * fr.h) - (item.w * item.l);
+                if (areaWaste < bestFitScore) {
+                    bestFitScore = areaWaste;
+                    bestRectIdx = i;
+                    rotatePlacement = false;
+                }
+            }
+            
+            // Try rotated orientation if allowed
+            if (item.allowRotation && item.l <= fr.w && item.w <= fr.h) {
+                const areaWaste = (fr.w * fr.h) - (item.w * item.l);
+                if (areaWaste < bestFitScore) {
+                    bestFitScore = areaWaste;
+                    bestRectIdx = i;
+                    rotatePlacement = true;
+                }
+            }
+        }
+        
+        if (bestRectIdx !== -1) {
+            const fr = freeRects[bestRectIdx];
+            freeRects.splice(bestRectIdx, 1); // remove placed rectangle
+            
+            const pw = rotatePlacement ? item.l : item.w;
+            const pl = rotatePlacement ? item.w : item.l;
+            
+            packedItems.push({
+                x: fr.x,
+                y: fr.y,
+                w: pw,
+                l: pl,
+                id: item.id,
+                w_orig: item.w_orig,
+                l_orig: item.l_orig,
+                rotated: rotatePlacement
+            });
+            
+            totalAreaPacked += (item.w_orig * item.l_orig);
+            placed = true;
+            
+            // Split remaining rectangle using Guillotine cut (split along longer remainder)
+            const remW = fr.w - pw - seam;
+            const remH = fr.h - pl - seam;
+            
+            if (remW > 0 || remH > 0) {
+                if (remW * pl >= remH * pw) { // Split horizontally first
+                    if (remW > 0) freeRects.push({ x: fr.x + pw + seam, y: fr.y, w: remW, h: pl });
+                    if (remH > 0) freeRects.push({ x: fr.x, y: fr.y + pl + seam, w: fr.w, h: remH });
+                } else { // Split vertically first
+                    if (remH > 0) freeRects.push({ x: fr.x, y: fr.y + pl + seam, w: pw, h: remH });
+                    if (remW > 0) freeRects.push({ x: fr.x + pw + seam, y: fr.y, w: remW, h: fr.h });
+                }
+            }
+        }
+        
+        if (!placed) {
+            remainingItems.push(item);
+        }
+    });
+    
+    // Deduce required roll length based on highest Y coordinate + item length
+    let maxUsedY = margins.top;
+    packedItems.forEach(p => {
+        maxUsedY = Math.max(maxUsedY, p.y + p.l + margins.bottom);
+    });
+    
+    const actualLength = maxUsedY;
+    const efficiency = actualLength > 0 ? (totalAreaPacked / (rolBreedte * actualLength)) * 100 : 0;
+    
+    return {
+        rolBreedte: rolBreedte,
+        lengte: actualLength,
+        efficiency: parseFloat(Math.min(efficiency, 100).toFixed(1)),
+        totalAreaPacked: totalAreaPacked,
+        packed: packedItems,
+        remainingOrders: remainingItems,
+        stuks: packedItems.length
+    };
+}
+
+/**
+ * 2D MaxRects Bin Packing Engine (Best Area Fit)
+ * Extremely powerful packing strategy using overlapping maximal free spaces, splits, and pruning.
+ */
+function packMaxRects(itemsToPack, rolBreedte, maxLengte, seam, margins) {
+    const usableWidth = rolBreedte - (margins.sides * 2);
+    const usableLength = maxLengte - (margins.top + margins.bottom);
+    
+    let freeRects = [{ x: margins.sides, y: margins.top, w: usableWidth, h: usableLength }];
+    let packedItems = [];
+    let remainingItems = [];
+    let totalAreaPacked = 0;
+    
+    itemsToPack.forEach(item => {
+        let bestRectIdx = -1;
+        let bestScore = Infinity;
+        let rotatePlacement = false;
+        
+        // Find best fitting maximal rectangle
+        for (let i = 0; i < freeRects.length; i++) {
+            const fr = freeRects[i];
+            
+            // Standard orientation
+            if (item.w <= fr.w && item.l <= fr.h) {
+                const areaWaste = (fr.w * fr.h) - (item.w * item.l);
+                if (areaWaste < bestScore) {
+                    bestScore = areaWaste;
+                    bestRectIdx = i;
+                    rotatePlacement = false;
+                }
+            }
+            
+            // Rotated orientation
+            if (item.allowRotation && item.l <= fr.w && item.w <= fr.h) {
+                const areaWaste = (fr.w * fr.h) - (item.w * item.l);
+                if (areaWaste < bestScore) {
+                    bestScore = areaWaste;
+                    bestRectIdx = i;
+                    rotatePlacement = true;
+                }
+            }
+        }
+        
+        if (bestRectIdx !== -1) {
+            const fr = freeRects[bestRectIdx];
+            const pw = rotatePlacement ? item.l : item.w;
+            const pl = rotatePlacement ? item.w : item.l;
+            
+            const targetX = fr.x;
+            const targetY = fr.y;
+            
+            const placed = {
+                x: targetX,
+                y: targetY,
+                w: pw,
+                l: pl,
+                id: item.id,
+                w_orig: item.w_orig,
+                l_orig: item.l_orig,
+                rotated: rotatePlacement
+            };
+            
+            packedItems.push(placed);
+            totalAreaPacked += (item.w_orig * item.l_orig);
+            
+            // Update and split free maximal rectangles with seam boundary
+            let newFreeRects = [];
+            const placementWithSeam = {
+                x: placed.x,
+                y: placed.y,
+                w: placed.w + seam,
+                h: placed.l + seam
+            };
+            
+            freeRects.forEach(rect => {
+                if (overlaps(rect, placementWithSeam)) {
+                    // Split rect into up to 4 sub-rectangles
+                    if (placementWithSeam.x > rect.x) {
+                        newFreeRects.push({ x: rect.x, y: rect.y, w: placementWithSeam.x - rect.x, h: rect.h });
+                    }
+                    if (placementWithSeam.x + placementWithSeam.w < rect.x + rect.w) {
+                        newFreeRects.push({ x: placementWithSeam.x + placementWithSeam.w, y: rect.y, w: (rect.x + rect.w) - (placementWithSeam.x + placementWithSeam.w), h: rect.h });
+                    }
+                    if (placementWithSeam.y > rect.y) {
+                        newFreeRects.push({ x: rect.x, y: rect.y, w: rect.w, h: placementWithSeam.y - rect.y });
+                    }
+                    if (placementWithSeam.y + placementWithSeam.h < rect.y + rect.h) {
+                        newFreeRects.push({ x: rect.x, y: placementWithSeam.y + placementWithSeam.h, w: rect.w, h: (rect.y + rect.h) - (placementWithSeam.y + placementWithSeam.h) });
+                    }
+                } else {
+                    newFreeRects.push(rect);
+                }
+            });
+            
+            // Prune duplicate or fully contained free rectangles
+            freeRects = pruneFreeRects(newFreeRects);
+        } else {
+            remainingItems.push(item);
+        }
+    });
+    
+    let maxUsedY = margins.top;
+    packedItems.forEach(p => {
+        maxUsedY = Math.max(maxUsedY, p.y + p.l + margins.bottom);
+    });
+    
+    const actualLength = maxUsedY;
+    const efficiency = actualLength > 0 ? (totalAreaPacked / (rolBreedte * actualLength)) * 100 : 0;
+    
+    return {
+        rolBreedte: rolBreedte,
+        lengte: actualLength,
+        efficiency: parseFloat(Math.min(efficiency, 100).toFixed(1)),
+        totalAreaPacked: totalAreaPacked,
+        packed: packedItems,
+        remainingOrders: remainingItems,
+        stuks: packedItems.length
+    };
+}
+
+function overlaps(r1, r2) {
+    return !(r1.x >= r2.x + r2.w || r1.x + r1.w <= r2.x || r1.y >= r2.y + r2.h || r1.y + r1.h <= r2.y);
+}
+
+function pruneFreeRects(rects) {
+    let result = [];
+    for (let i = 0; i < rects.length; i++) {
+        let keep = true;
+        for (let j = 0; j < rects.length; j++) {
+            if (i !== j && isContained(rects[i], rects[j])) {
+                keep = false;
+                break;
+            }
+        }
+        if (keep) result.push(rects[i]);
+    }
+    return result;
+}
+
+function isContained(r1, r2) {
+    return r1.x >= r2.x && r1.x + r1.w <= r2.x + r2.w && r1.y >= r2.y && r1.y + r1.h <= r2.y + r2.h;
+}
+
+/**
+ * Standard FFD Shelf Packer
+ */
+function packShelf(itemsToPack, rolBreedte, maxLengte, seam, margins) {
+    const usableWidth = rolBreedte - (margins.sides * 2);
+    let shelves = [];
+    let packedItems = [];
+    let remainingItems = [];
+    let totalAreaPacked = 0;
+    
+    itemsToPack.forEach(item => {
+        let pw = item.w;
+        let pl = item.l;
+        
+        // Handle basic fitting
+        if (Math.max(item.w, item.l) <= usableWidth && item.allowRotation) {
+            if (item.l < item.w) {
+                pw = item.l;
+                pl = item.w;
+            }
+        }
+        
+        let placed = false;
+        for (let s of shelves) {
+            if (s.usedWidth + pw + seam <= usableWidth) {
+                packedItems.push({
+                    x: margins.sides + s.usedWidth,
+                    y: s.startY,
+                    w: pw,
+                    l: pl,
+                    id: item.id,
+                    w_orig: item.w_orig,
+                    l_orig: item.l_orig,
+                    rotated: (pw !== item.w)
+                });
+                s.usedWidth += pw + seam;
+                s.height = Math.max(s.height, pl);
+                totalAreaPacked += (item.w_orig * item.l_orig);
+                placed = true;
+                break;
+            }
+        }
+        
+        if (!placed) {
+            let startY = shelves.reduce((sum, s) => sum + s.height + seam, margins.top);
+            if (startY + pl + margins.bottom <= maxLengte) {
+                packedItems.push({
+                    x: margins.sides,
+                    y: startY,
+                    w: pw,
+                    l: pl,
+                    id: item.id,
+                    w_orig: item.w_orig,
+                    l_orig: item.l_orig,
+                    rotated: (pw !== item.w)
+                });
+                shelves.push({ startY: startY, height: pl, usedWidth: pw });
+                totalAreaPacked += (item.w_orig * item.l_orig);
+                placed = true;
+            } else {
+                remainingItems.push(item);
+            }
+        }
+    });
+    
+    let requiredLength = shelves.reduce((sum, s) => sum + s.height + seam, margins.top) + margins.bottom;
+    const efficiency = requiredLength > 0 ? (totalAreaPacked / (rolBreedte * requiredLength)) * 100 : 0;
+    
+    return {
+        rolBreedte: rolBreedte,
+        lengte: requiredLength,
+        efficiency: parseFloat(Math.min(efficiency, 100).toFixed(1)),
+        totalAreaPacked: totalAreaPacked,
+        packed: packedItems,
+        remainingOrders: remainingItems,
+        stuks: packedItems.length
+    };
+}
+
+// 3. MAIN WORKFLOW & INTERFACES
+document.addEventListener('DOMContentLoaded', () => {
+    initDatabase().then(() => {
+        setupEventListeners();
+        loadActiveViews();
+        loadDashboardStats();
+        populateWorkspaceInventoryDropdown();
+    });
+});
+
+function loadActiveViews() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            item.classList.add('active');
+            
+            const targetView = item.getAttribute('data-view');
+            switchView(targetView);
+        });
+    });
+    
+    document.getElementById('btn-quick-nest').addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+        document.querySelector('[data-view="workspace"]').classList.add('active');
+        switchView('workspace');
+        goToStep(1);
+    });
+}
+
+function switchView(viewName) {
+    currentView = viewName;
+    document.querySelectorAll('.view-panel').forEach(panel => panel.classList.remove('active'));
+    
+    const targetPanel = document.getElementById(`view-${viewName}`);
+    if (targetPanel) {
+        targetPanel.classList.add('active');
+    }
+    
+    // Update header labels
+    const titleMap = {
+        'dashboard': { t: 'Dashboard Performance', s: 'Real-time rendement en machinegegevens' },
+        'workspace': { t: 'Nesting Workspace', s: 'Bereken, controleer en optimaliseer batches handmatig' },
+        'inventory': { t: 'Voorraad & Reststukken', s: 'Beheer beschikbare vinyl, textiel en scrap voorraden' },
+        'api-portal': { t: 'Developer API Console', s: 'Automatiseer en integreer nesting rechtstreeks via REST' },
+        'settings': { t: 'Systeeminstellingen', s: 'Beheer back-ups, standaard naadmarges en database' }
+    };
+    
+    if (titleMap[viewName]) {
+        document.getElementById('page-title').innerText = titleMap[viewName].t;
+        document.getElementById('page-subtitle').innerText = titleMap[viewName].s;
+    }
+    
+    // Render view-specific content
+    if (viewName === 'dashboard') {
+        loadDashboardStats();
+    } else if (viewName === 'inventory') {
+        loadInventoryList();
+    }
+}
+
+function goToStep(stepNum) {
+    currentStep = stepNum;
+    document.querySelectorAll('.step-indicator-item').forEach((item, idx) => {
+        item.classList.remove('active', 'completed');
+        if (idx + 1 < stepNum) item.classList.add('completed');
+        if (idx + 1 === stepNum) item.classList.add('active');
+    });
+    
+    document.querySelectorAll('.step-pane').forEach(pane => pane.classList.remove('active'));
+    document.getElementById(`step-pane-${stepNum}`).classList.add('active');
+    
+    if (stepNum === 3 && selectedBatch) {
+        initInteractiveCanvas();
+    }
+}
+
+// 4. MANUAL ORDER spreadsheet EDITOR & CSV UPLOAD
+const initialOrders = [
+    { orderNr: 'ORD-2026-001', desc: 'Roll-up Banner Premium', width: 850, length: 2000, aantal: 3, rot: true },
+    { orderNr: 'ORD-2026-002', desc: 'Raamsticker Glans Transparant', width: 600, length: 1200, aantal: 4, rot: true },
+    { orderNr: 'ORD-2026-003', desc: 'Beurswand Textiel Doek', width: 1500, length: 3000, aantal: 1, rot: false },
+    { orderNr: 'ORD-2026-004', desc: 'Sticker Promotie Klein', width: 300, length: 300, aantal: 15, rot: true }
+];
+
+function setupManualOrdersTable(orders = initialOrders) {
+    const tbody = document.getElementById('tbody-orders-input');
+    tbody.innerHTML = '';
+    
+    orders.forEach((o, i) => {
+        addOrderRow(o);
+    });
+}
+
+function addOrderRow(o = { orderNr: '', desc: '', width: 500, length: 1000, aantal: 1, rot: true }) {
+    const tbody = document.getElementById('tbody-orders-input');
+    const tr = document.createElement('tr');
+    
+    tr.innerHTML = `
+        <td><input type="text" class="form-control font-mono" value="${o.orderNr || 'ORD-' + Math.floor(Math.random()*10000)}" placeholder="ID"></td>
+        <td><input type="text" class="form-control" value="${o.desc || 'Materiaal'}" placeholder="Artikel omschrijving"></td>
+        <td><input type="number" class="form-control text-right" value="${o.width}" min="10"></td>
+        <td><input type="number" class="form-control text-right" value="${o.length}" min="10"></td>
+        <td><input type="number" class="form-control text-right" value="${o.aantal}" min="1"></td>
+        <td><input type="date" class="form-control" value="${new Date().toISOString().split('T')[0]}"></td>
+        <td class="text-center">
+            <input type="checkbox" ${o.rot ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
+        </td>
+        <td class="text-center">
+            <button class="btn btn-secondary btn-icon text-red-500 delete-row-btn" style="padding:4px; height:32px; width:32px;"><i class="fa-solid fa-trash-can"></i></button>
+        </td>
+    `;
+    
+    tbody.appendChild(tr);
+    
+    tr.querySelector('.delete-row-btn').addEventListener('click', () => {
+        tr.remove();
+        if (tbody.children.length === 0) {
+            setupManualOrdersTable([]); // ensure one empty if fully deleted
+        }
+    });
+}
+
+function getOrdersFromTable() {
+    const orders = [];
+    const rows = document.querySelectorAll('#tbody-orders-input tr');
+    
+    rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        if (inputs.length >= 5) {
+            orders.push({
+                orderNr: inputs[0].value.trim(),
+                desc: inputs[1].value.trim(),
+                breedte: parseInt(inputs[2].value) || 0,
+                lengte: parseInt(inputs[3].value) || 0,
+                aantal: parseInt(inputs[4].value) || 0,
+                deadline: inputs[5].value,
+                rot: inputs[6].checked
+            });
+        }
+    });
+    return orders.filter(o => o.breedte > 0 && o.lengte > 0 && o.aantal > 0);
+}
+
+// Parse uploaded CSV
+function parseCSV(text) {
+    const lines = text.split(/\r?\n/);
+    if (lines.length < 2) return [];
+    
+    // Header check
+    const headers = lines[0].split(/[;,]/).map(h => h.trim().toLowerCase());
+    
+    const colIdx = {
+        id: headers.findIndex(h => h.includes('id') || h.includes('order') || h.includes('nr')),
+        desc: headers.findIndex(h => h.includes('desc') || h.includes('omschrijving') || h.includes('naam') || h.includes('artikel')),
+        width: headers.findIndex(h => h.includes('breedte') || h.includes('width') || h.includes('w')),
+        length: headers.findIndex(h => h.includes('lengte') || h.includes('length') || h.includes('l')),
+        qty: headers.findIndex(h => h.includes('aantal') || h.includes('qty') || h.includes('aantal_stuks') || h.includes('aantal stuks')),
+        rot: headers.findIndex(h => h.includes('rotatie') || h.includes('rotation') || h.includes('rot'))
+    };
+    
+    // Set fallbacks if index not found
+    if (colIdx.id === -1) colIdx.id = 0;
+    if (colIdx.desc === -1) colIdx.desc = 1;
+    if (colIdx.width === -1) colIdx.width = 2;
+    if (colIdx.length === -1) colIdx.length = 3;
+    if (colIdx.qty === -1) colIdx.qty = 4;
+    
+    const parsedOrders = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = lines[i].split(/[;,]/).map(c => c.trim());
+        
+        if (cols.length < 3) continue;
+        
+        parsedOrders.push({
+            orderNr: cols[colIdx.id] || 'ORD-' + (1000 + i),
+            desc: cols[colIdx.desc] || 'Material Item',
+            width: parseInt(cols[colIdx.width]) || 100,
+            length: parseInt(cols[colIdx.length]) || 100,
+            aantal: parseInt(cols[colIdx.qty]) || 1,
+            rot: colIdx.rot !== -1 ? (cols[colIdx.rot].toLowerCase() === 'ja' || cols[colIdx.rot].toLowerCase() === 'true' || cols[colIdx.rot] === '1') : true
+        });
+    }
+    return parsedOrders;
+}
+
+// 5. INTERACTIVE HTML5 CANVAS LAYOUT VISUALIZER
+function initInteractiveCanvas() {
+    canvas = document.getElementById('nestingCanvas');
+    ctx = canvas.getContext('2d');
+    
+    const container = document.getElementById('canvas-view-container');
+    
+    // Set fit-to-screen scale automatically
+    fitCanvasToContainer();
+    
+    // Setup interactive events
+    canvas.addEventListener('mousedown', onCanvasMouseDown);
+    canvas.addEventListener('mousemove', onCanvasMouseMove);
+    canvas.addEventListener('mouseup', onCanvasMouseUp);
+    
+    // Zoom/Pan events
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomFactor = 1.1;
+        if (e.deltaY < 0) {
+            zoom *= zoomFactor;
+        } else {
+            zoom /= zoomFactor;
+        }
+        zoom = Math.max(0.1, Math.min(zoom, 10));
+        drawNestingVisualizer();
+    });
+    
+    // Keybinds for rotation
+    window.addEventListener('keydown', (e) => {
+        if (currentView === 'workspace' && currentStep === 3 && selectedBatch) {
+            if (e.key.toLowerCase() === 'r' && dragSelectedPiece) {
+                rotateSelectedPiece();
+            }
+        }
+    });
+}
+
+function fitCanvasToContainer() {
+    if (!canvas || !selectedBatch) return;
+    
+    const container = document.getElementById('canvas-view-container');
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    
+    // Determine canvas physical width and heights
+    canvas.width = cw;
+    canvas.height = ch;
+    
+    // Fit nesting layout to canvas boundary
+    const padding = 40;
+    const usableW = cw - (padding * 2);
+    const usableH = ch - (padding * 2);
+    
+    const scaleW = usableW / selectedBatch.rolBreedte;
+    const scaleH = usableH / selectedBatch.lengte;
+    
+    zoom = Math.min(scaleW, scaleH);
+    panX = padding;
+    panY = padding;
+    
+    drawNestingVisualizer();
+}
+
+function drawNestingVisualizer() {
+    if (!canvas || !selectedBatch) return;
+    
+    // Clear and fill dark canvas background
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim() || '#090c10';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.save();
+    ctx.translate(panX, panY);
+    ctx.scale(zoom, zoom);
+    
+    // 1. Draw outer continuous roll/sheet contour
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary').trim() || '#0d1117';
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 2 / zoom;
+    
+    ctx.fillRect(0, 0, selectedBatch.rolBreedte, selectedBatch.lengte);
+    ctx.strokeRect(0, 0, selectedBatch.rolBreedte, selectedBatch.lengte);
+    
+    // Draw roll dotted grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1 / zoom;
+    const gridSize = 100; // 10cm grid lines
+    ctx.beginPath();
+    for (let x = gridSize; x < selectedBatch.rolBreedte; x += gridSize) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, selectedBatch.lengte);
+    }
+    for (let y = gridSize; y < selectedBatch.lengte; y += gridSize) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(selectedBatch.rolBreedte, y);
+    }
+    ctx.stroke();
+    
+    // 2. Draw margins
+    const m = selectedBatch.margins || { top: 0, bottom: 0, sides: 0 };
+    ctx.strokeStyle = 'rgba(240, 136, 62, 0.2)'; // Margin alert orange
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.setLineDash([6 / zoom, 6 / zoom]);
+    ctx.strokeRect(m.sides, m.top, selectedBatch.rolBreedte - (m.sides * 2), selectedBatch.lengte - (m.top + m.bottom));
+    ctx.setLineDash([]);
+    
+    // 3. Draw nested parts
+    selectedBatch.packed.forEach(p => {
+        const isDragged = (dragSelectedPiece === p);
+        
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        
+        // Piece body
+        if (isDragged) {
+            ctx.fillStyle = isCollisionDetected ? 'rgba(248, 81, 73, 0.2)' : 'rgba(88, 166, 255, 0.2)';
+            ctx.strokeStyle = isCollisionDetected ? '#f85149' : '#58a6ff';
+            ctx.lineWidth = 3 / zoom;
+        } else {
+            ctx.fillStyle = 'rgba(88, 166, 255, 0.08)';
+            ctx.strokeStyle = 'rgba(88, 166, 255, 0.4)';
+            ctx.lineWidth = 1.5 / zoom;
+        }
+        
+        ctx.fillRect(0, 0, p.w, p.l);
+        ctx.strokeRect(0, 0, p.w, p.l);
+        
+        // Inner dimensions label
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#c9d1d9';
+        ctx.font = `${Math.max(10, 12 / zoom)}px Inter`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Draw centered ID text
+        if (p.w * zoom > 30 && p.l * zoom > 15) {
+            ctx.fillText(p.id, p.w / 2, p.l / 2 - 6 / zoom);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#8b949e';
+            ctx.font = `${Math.max(8, 9 / zoom)}px JetBrains Mono`;
+            ctx.fillText(`${p.w_orig}x${p.l_orig}`, p.w / 2, p.l / 2 + 6 / zoom);
+        }
+        
+        // Draw rotation indicator arrow
+        if (p.rotated && p.w * zoom > 20 && p.l * zoom > 20) {
+            ctx.fillStyle = 'rgba(188, 140, 255, 0.6)';
+            ctx.font = `${Math.max(8, 10 / zoom)}px FontAwesome`;
+            ctx.fillText('\uf01e', 12 / zoom, 12 / zoom); // rot icon
+        }
+        
+        ctx.restore();
+    });
+    
+    ctx.restore();
+}
+
+// Interactive manual adjustments event handles
+function onCanvasMouseDown(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = (e.clientX - rect.left - panX) / zoom;
+    const mouseY = (e.clientY - rect.top - panY) / zoom;
+    
+    // Find if clicked on nested piece
+    let clickedPiece = null;
+    for (let i = selectedBatch.packed.length - 1; i >= 0; i--) {
+        const p = selectedBatch.packed[i];
+        if (mouseX >= p.x && mouseX <= p.x + p.w && mouseY >= p.y && mouseY <= p.y + p.l) {
+            clickedPiece = p;
+            break;
+        }
+    }
+    
+    if (clickedPiece) {
+        dragSelectedPiece = clickedPiece;
+        dragOffset.x = mouseX - clickedPiece.x;
+        dragOffset.y = mouseY - clickedPiece.y;
+        isDraggingCanvas = false;
+        canvasInteractionActive = true;
+    } else {
+        // Move layout canvas zoom panning
+        isDraggingCanvas = true;
+        startX = e.clientX - panX;
+        startY = e.clientY - panY;
+    }
+    drawNestingVisualizer();
+}
+
+function onCanvasMouseMove(e) {
+    if (isDraggingCanvas) {
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        drawNestingVisualizer();
+    } else if (dragSelectedPiece) {
+        const rect = canvas.getBoundingClientRect();
+        let targetX = (e.clientX - rect.left - panX) / zoom - dragOffset.x;
+        let targetY = (e.clientY - rect.top - panY) / zoom - dragOffset.y;
+        
+        // GRID SNAP ALIGNMENT (10mm intervals)
+        const snap = 10;
+        targetX = Math.round(targetX / snap) * snap;
+        targetY = Math.round(targetY / snap) * snap;
+        
+        // Bound checks to ensure items snap back on canvas margins
+        const m = selectedBatch.margins || { top: 0, bottom: 0, sides: 0 };
+        const minX = m.sides;
+        const maxX = selectedBatch.rolBreedte - m.sides - dragSelectedPiece.w;
+        const minY = m.top;
+        const maxY = selectedBatch.lengte - m.top - dragSelectedPiece.l;
+        
+        targetX = Math.max(minX, Math.min(targetX, maxX));
+        targetY = Math.max(minY, Math.min(targetY, maxY));
+        
+        dragSelectedPiece.x = targetX;
+        dragSelectedPiece.y = targetY;
+        
+        // Detect Collision with other parts
+        isCollisionDetected = checkOverlapCollision(dragSelectedPiece);
+        drawNestingVisualizer();
+    }
+}
+
+function onCanvasMouseUp() {
+    if (dragSelectedPiece) {
+        dragSelectedPiece = null;
+        canvasInteractionActive = false;
+        isCollisionDetected = false;
+        
+        // Recalculate batch required yield and efficiency dynamically
+        recalculateNestingBatchDetails();
+        drawNestingVisualizer();
+    }
+    isDraggingCanvas = false;
+}
+
+function checkOverlapCollision(activePiece) {
+    const seam = selectedBatch.seam || 0;
+    
+    // Check sheet border margins
+    const m = selectedBatch.margins || { top: 0, bottom: 0, sides: 0 };
+    if (activePiece.x < m.sides || 
+        activePiece.x + activePiece.w > selectedBatch.rolBreedte - m.sides ||
+        activePiece.y < m.top) {
+        return true;
+    }
+    
+    // Check overlaps with other pieces
+    for (let p of selectedBatch.packed) {
+        if (p === activePiece) continue;
+        
+        // Apply seam logic
+        const r1 = { x: activePiece.x, y: activePiece.y, w: activePiece.w + seam, h: activePiece.l + seam };
+        const r2 = { x: p.x, y: p.y, w: p.w + seam, h: p.l + seam };
+        
+        if (overlaps(r1, r2)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function rotateSelectedPiece() {
+    if (!dragSelectedPiece) return;
+    
+    const pw = dragSelectedPiece.w;
+    const pl = dragSelectedPiece.l;
+    
+    // Swap orientation
+    dragSelectedPiece.w = pl;
+    dragSelectedPiece.l = pw;
+    dragSelectedPiece.rotated = !dragSelectedPiece.rotated;
+    
+    isCollisionDetected = checkOverlapCollision(dragSelectedPiece);
+    recalculateNestingBatchDetails();
+    drawNestingVisualizer();
+}
+
+function recalculateNestingBatchDetails() {
+    if (!selectedBatch) return;
+    
+    let maxUsedY = 0;
+    let totalAreaPacked = 0;
+    const m = selectedBatch.margins || { top: 0, bottom: 0, sides: 0 };
+    
+    selectedBatch.packed.forEach(p => {
+        maxUsedY = Math.max(maxUsedY, p.y + p.l + m.bottom);
+        totalAreaPacked += (p.w_orig * p.l_orig);
+    });
+    
+    selectedBatch.lengte = maxUsedY;
+    selectedBatch.efficiency = parseFloat(Math.min((totalAreaPacked / (selectedBatch.rolBreedte * selectedBatch.lengte)) * 100, 100).toFixed(1));
+    
+    // Update statistical sidebar widgets in real-time
+    document.getElementById('calc-efficiency-val').innerText = selectedBatch.efficiency + '%';
+    document.getElementById('calc-len-val').innerText = (selectedBatch.lengte / 1000).toFixed(2) + ' m';
+    
+    const radialFill = document.getElementById('radial-yield-fill');
+    const dashoffset = 251.2 - (251.2 * selectedBatch.efficiency / 100);
+    radialFill.style.strokeDashoffset = dashoffset;
+}
+
+// 6. BARCODE UTILITY & PRINT SCHEDULING
+function generateHTMLBarcodes() {
+    // Generate code128 patterns dynamically for work order labels
+    const items = document.querySelectorAll('.label-item');
+    items.forEach((item, idx) => {
+        const orderNr = item.getAttribute('data-ordernr');
+        try {
+            JsBarcode(`#barcode-print-${idx}`, orderNr, {
+                format: "CODE128",
+                width: 2,
+                height: 40,
+                displayValue: true,
+                fontSize: 12
+            });
+        } catch (err) {
+            console.error('Barcode creation error:', err);
+        }
+    });
+}
+
+// 7. EXPORTERS (ASCII DXF Generator & Vector SVG Exporter)
+function generateDXFData(batch) {
+    let dxf = [];
+    
+    // DXF HEADER Section
+    dxf.push("  0", "SECTION", "  2", "HEADER", "  9", "$ACADVER", "  1", "AC1009", "  0", "ENDSEC");
+    
+    // TABLES Section (Layers definition)
+    dxf.push("  0", "SECTION", "  2", "TABLES", "  0", "TABLE", "  2", "LAYER", " 70", "2");
+    dxf.push("  0", "LAYER", "  2", "0", " 70", "64", " 62", "7", "  6", "CONTINUOUS");
+    dxf.push("  0", "LAYER", "  2", "BORDER", " 70", "64", " 62", "1", "  6", "CONTINUOUS"); // Red roll boundary
+    dxf.push("  0", "LAYER", "  2", "PARTS", " 70", "64", " 62", "4", "  6", "CONTINUOUS");  // Cyan nested parts
+    dxf.push("  0", "ENDTAB", "  0", "ENDSEC");
+    
+    // ENTITIES Section (Polylines and text)
+    dxf.push("  0", "SECTION", "  2", "ENTITIES");
+    
+    // 1. Draw outer roll boundary rectangle
+    drawDXFRect(dxf, 0, 0, batch.rolBreedte, batch.lengte, "BORDER");
+    
+    // 2. Draw each nested part
+    batch.packed.forEach(p => {
+        drawDXFRect(dxf, p.x, p.y, p.w, p.l, "PARTS");
+        
+        // Add centered text for CNC labeling
+        dxf.push("  0", "TEXT", "  8", "PARTS");
+        dxf.push(" 10", (p.x + p.w / 2).toString()); // X
+        dxf.push(" 20", (p.y + p.l / 2).toString()); // Y
+        dxf.push(" 40", "15"); // Text height
+        dxf.push("  1", p.id); // Text string
+        dxf.push(" 50", "0");  // Angle
+    });
+    
+    dxf.push("  0", "ENDSEC", "  0", "EOF");
+    
+    return dxf.join("\n");
+}
+
+function drawDXFRect(dxf, x, y, w, l, layer) {
+    dxf.push("  0", "POLYLINE", "  8", layer, " 66", "1", " 70", "1");
+    
+    const points = [
+        { x: x, y: y },
+        { x: x + w, y: y },
+        { x: x + w, y: y + l },
+        { x: x, y: y + l }
+    ];
+    
+    points.forEach(pt => {
+        dxf.push("  0", "VERTEX", "  8", layer);
+        dxf.push(" 10", pt.x.toString());
+        dxf.push(" 20", pt.y.toString());
+    });
+    
+    dxf.push("  0", "SEQEND");
+}
+
+function generateSVGData(batch) {
+    let svg = [];
+    svg.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${batch.rolBreedte} ${batch.lengte}" width="100%" height="100%">`);
+    
+    // Background style
+    svg.push(`  <rect width="${batch.rolBreedte}" height="${batch.lengte}" fill="#0d1117" stroke="#161b22" stroke-width="2" />`);
+    
+    // Placed items
+    batch.packed.forEach(p => {
+        svg.push(`  <g id="item-${p.id}">`);
+        svg.push(`    <rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.l}" fill="rgba(88, 166, 255, 0.08)" stroke="#58a6ff" stroke-width="1.5" />`);
+        svg.push(`    <text x="${p.x + p.w / 2}" y="${p.y + p.l / 2 - 5}" font-family="Inter, sans-serif" font-size="12" font-weight="bold" fill="#c9d1d9" text-anchor="middle" dominant-baseline="middle">${p.id}</text>`);
+        svg.push(`    <text x="${p.x + p.w / 2}" y="${p.y + p.l / 2 + 10}" font-family="monospace" font-size="8" fill="#8b949e" text-anchor="middle" dominant-baseline="middle">${p.w_orig}x${p.l_orig}mm</text>`);
+        svg.push(`  </g>`);
+    });
+    
+    svg.push(`</svg>`);
+    return svg.join("\n");
+}
+
+// 8. EVENT HANDLERS & BATCH ENGINE INTERFACE
+function setupEventListeners() {
+    // Theme toggle handler
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    themeToggleBtn.addEventListener('click', () => {
+        const root = document.documentElement;
+        const currentTheme = root.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        root.setAttribute('data-theme', newTheme);
+        themeToggleBtn.innerHTML = newTheme === 'light' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+        putSetting('theme', newTheme);
+        
+        if (selectedBatch) drawNestingVisualizer();
+    });
+    
+    // Restore past theme from settings
+    getSetting('theme').then(savedTheme => {
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            themeToggleBtn.innerHTML = savedTheme === 'light' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+        }
+    });
+
+    // Step 1 navigation rules
+    setupManualOrdersTable();
+    
+    document.getElementById('btn-add-order-row').addEventListener('click', () => addOrderRow());
+    document.getElementById('btn-clear-orders').addEventListener('click', () => {
+        if (confirm('Weet u zeker dat u alle orders wilt wissen?')) {
+            setupManualOrdersTable([]);
+        }
+    });
+    
+    document.getElementById('btn-load-sample-csv').addEventListener('click', () => {
+        setupManualOrdersTable(initialOrders);
+    });
+
+    // CSV File Select parser
+    const dropZone = document.getElementById('csv-drop-zone');
+    dropZone.addEventListener('click', () => document.getElementById('csv-file-input').click());
+    
+    document.getElementById('csv-file-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const parsed = parseCSV(evt.target.result);
+                if (parsed.length > 0) {
+                    setupManualOrdersTable(parsed);
+                    alert(`${parsed.length} orders succesvol ingeladen vanuit CSV.`);
+                } else {
+                    alert('Ongeldig of leeg CSV bestand gedetecteerd.');
+                }
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    // Handle CSV drag & drop highlights
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--accent-blue)';
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.style.borderColor = 'var(--border-color)';
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--border-color)';
+        const file = e.dataTransfer.files[0];
+        if (file && file.name.endsWith('.csv')) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const parsed = parseCSV(evt.target.result);
+                if (parsed.length > 0) {
+                    setupManualOrdersTable(parsed);
+                }
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    // Workspace Step Flow navigation
+    document.getElementById('btn-next-to-step-2').addEventListener('click', () => {
+        const orders = getOrdersFromTable();
+        if (orders.length === 0) {
+            alert('Voer ten minste één geldige orderregel in om door te gaan.');
+            return;
+        }
+        activeOrders = orders;
+        populateWorkspaceInventoryDropdown();
+        goToStep(2);
+    });
+    
+    document.getElementById('btn-back-to-step-1').addEventListener('click', () => goToStep(1));
+
+    // Handle Stock Inventory changes
+    const selectStock = document.getElementById('select-roll-stock');
+    selectStock.addEventListener('change', () => {
+        const inputs = document.getElementById('manual-roll-inputs');
+        if (selectStock.value === 'manual') {
+            inputs.style.display = 'grid';
+        } else {
+            inputs.style.display = 'none';
+        }
+    });
+
+    // Step 2 Run Nesting Engine
+    document.getElementById('btn-run-nesting').addEventListener('click', () => {
+        runBatchNestingEngine();
+    });
+
+    // Canvas tools listeners
+    document.getElementById('btn-zoom-in').addEventListener('click', () => { zoom *= 1.2; drawNestingVisualizer(); });
+    document.getElementById('btn-zoom-out').addEventListener('click', () => { zoom /= 1.2; drawNestingVisualizer(); });
+    document.getElementById('btn-zoom-fit').addEventListener('click', () => fitCanvasToContainer());
+    document.getElementById('btn-rotate-piece').addEventListener('click', () => {
+        if (dragSelectedPiece) rotateSelectedPiece();
+        else alert('Klik eerst op een item in het canvas om het te kunnen roteren.');
+    });
+    document.getElementById('btn-delete-piece').addEventListener('click', () => {
+        alert('Items handmatig slepen/uitsluiten is actief. Versleep items buiten de roll-grenzen om ze weg te snijden.');
+    });
+
+    // Save batch action committing
+    document.getElementById('btn-commit-batch-to-inventory').addEventListener('click', () => {
+        commitCurrentBatchToDatabase();
+    });
+
+    // Exporters
+    document.getElementById('btn-export-dxf').addEventListener('click', () => {
+        if (!selectedBatch) return;
+        const dxfStr = generateDXFData(selectedBatch);
+        downloadFile(dxfStr, `Nesting_${selectedBatch.id}.dxf`, 'application/dxf');
+    });
+    
+    document.getElementById('btn-export-svg').addEventListener('click', () => {
+        if (!selectedBatch) return;
+        const svgStr = generateSVGData(selectedBatch);
+        downloadFile(svgStr, `Nesting_${selectedBatch.id}.svg`, 'image/svg+xml');
+    });
+
+    document.getElementById('btn-export-csv-results').addEventListener('click', () => {
+        if (!selectedBatch) return;
+        let csv = "Omschrijving;Lengte;Breedte;Origineel_B;Origineel_L;Rotated\n" +
+                  selectedBatch.packed.map(p => `${p.id};${p.l};${p.w};${p.w_orig};${p.l_orig};${p.rotated ? 'Ja' : 'Nee'}`).join("\n");
+        downloadFile(csv, `Nesting_Rapport_${selectedBatch.id}.csv`, 'text/csv');
+    });
+
+    document.getElementById('btn-restart-wizard').addEventListener('click', () => {
+        setupManualOrdersTable();
+        goToStep(1);
+    });
+
+    // 9. INVENTORY MANAGEMENT EVENTS
+    document.getElementById('form-add-stock').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const desc = document.getElementById('stock-desc').value.trim();
+        const type = document.getElementById('stock-type').value;
+        const width = parseInt(document.getElementById('stock-width').value) || 0;
+        const length = parseInt(document.getElementById('stock-length').value) || 0;
+        const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
+        const origin = document.getElementById('stock-origin').value;
+        
+        if (desc && width > 0 && length > 0) {
+            const tx = db.transaction('stock', 'readwrite');
+            const store = tx.objectStore('stock');
+            
+            store.add({
+                description: desc,
+                type: type,
+                width: width,
+                length: length,
+                cost: cost,
+                origin: origin
+            });
+            
+            tx.oncomplete = function() {
+                alert('Materiaal rol succesvol toegevoegd aan voorraad.');
+                document.getElementById('form-add-stock').reset();
+                loadInventoryList();
+            };
+        }
+    });
+
+    // 10. SYSTEM DATABASE CONTROLS (Nuke / Backup)
+    document.getElementById('btn-nuke-database').addEventListener('click', () => {
+        if (confirm('LET OP! Dit wist de gehele IndexedDB database inclusief al uw rollenvoorraad en geschiedenis. Wilt u doorgaan?')) {
+            const req = indexedDB.deleteDatabase('RollNestProDB');
+            req.onsuccess = function() {
+                alert('Database succesvol gewist. De pagina zal nu herladen.');
+                window.location.reload();
+            };
+        }
+    });
+
+    document.getElementById('btn-export-database').addEventListener('click', () => {
+        backupDatabaseJSON();
+    });
+
+    document.getElementById('btn-import-database-trigger').addEventListener('click', () => {
+        document.getElementById('database-import-file').click();
+    });
+
+    document.getElementById('database-import-file').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const parsed = JSON.parse(evt.target.result);
+                    restoreDatabaseBackup(parsed);
+                } catch (err) {
+                    alert('Fout bij het parsen van het back-up bestand.');
+                }
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    // Printing
+    document.getElementById('btn-print-werkbon').addEventListener('click', () => {
+        setupPrintWerkbonView();
+        window.print();
+    });
+
+    document.getElementById('btn-print-labels').addEventListener('click', () => {
+        setupPrintLabelsView();
+        window.print();
+    });
+}
+
+// REST API Database restore tools
+function backupDatabaseJSON() {
+    const backup = { stock: [], batches: [] };
+    const tx = db.transaction(['stock', 'batches'], 'readonly');
+    
+    tx.objectStore('stock').getAll().onsuccess = function(e) { backup.stock = e.target.result; };
+    tx.objectStore('batches').getAll().onsuccess = function(e) { backup.batches = e.target.result; };
+    
+    tx.oncomplete = function() {
+        const json = JSON.stringify(backup, null, 2);
+        downloadFile(json, 'RollNestPro_Backup.json', 'application/json');
+    };
+}
+
+function restoreDatabaseBackup(backup) {
+    if (!backup.stock || !backup.batches) {
+        alert('Ongeldig back-up bestand.');
+        return;
+    }
+    
+    const tx = db.transaction(['stock', 'batches'], 'readwrite');
+    const stockStore = tx.objectStore('stock');
+    const batchStore = tx.objectStore('batches');
+    
+    stockStore.clear();
+    batchStore.clear();
+    
+    backup.stock.forEach(s => stockStore.add(s));
+    backup.batches.forEach(b => batchStore.add(b));
+    
+    tx.oncomplete = function() {
+        alert('Database back-up succesvol teruggezet.');
+        window.location.reload();
+    };
+}
+
+// 11. NESTING ENGINE MANAGER RUN
+function runBatchNestingEngine() {
+    const selectStock = document.getElementById('select-roll-stock');
+    const algo = document.getElementById('param-algorithm').value;
+    const rotRule = document.getElementById('param-rotation').value;
+    
+    const seam = parseInt(document.getElementById('param-seam').value) || 0;
+    const sides = parseInt(document.getElementById('param-side-margin').value) || 0;
+    const topMargin = parseInt(document.getElementById('param-top-margin').value) || 0;
+    
+    const margins = { top: topMargin, bottom: topMargin, sides: sides };
+    
+    let rollWidth = 1600;
+    let maxRollLength = 50000;
+    let selectedStockItem = null;
+    
+    if (selectStock.value === 'manual') {
+        rollWidth = parseInt(document.getElementById('param-manual-width').value) || 1600;
+        maxRollLength = parseInt(document.getElementById('param-manual-length').value) || 50000;
+    } else {
+        // Find stock width in selection
+        const option = selectStock.options[selectStock.selectedIndex];
+        rollWidth = parseInt(option.getAttribute('data-width'));
+        maxRollLength = parseInt(option.getAttribute('data-length'));
+        selectedStockItem = {
+            id: parseInt(selectStock.value),
+            description: option.getAttribute('data-desc')
+        };
+    }
+    
+    // Translate activeOrders to raw items array (duplicates quantities)
+    let unpackedItems = [];
+    activeOrders.forEach(o => {
+        for (let i = 0; i < o.aantal; i++) {
+            unpackedItems.push({
+                id: o.orderNr,
+                w: o.breedte,
+                l: o.lengte,
+                w_orig: o.breedte,
+                l_orig: o.lengte,
+                allowRotation: rotRule === 'allow-90' ? o.rot : false
+            });
+        }
+    });
+    
+    // Sort items by size decreasing (standard best practice)
+    unpackedItems = sortItemsDecreasing(unpackedItems);
+    
+    let result = null;
+    if (algo === 'maxrects') {
+        result = packMaxRects(unpackedItems, rollWidth, maxRollLength, seam, margins);
+    } else if (algo === 'guillotine') {
+        result = packGuillotine(unpackedItems, rollWidth, maxRollLength, seam, margins);
+    } else {
+        result = packShelf(unpackedItems, rollWidth, maxRollLength, seam, margins);
+    }
+    
+    // Populate layout batch data
+    selectedBatch = {
+        id: 'BCH-' + Date.now().toString().substring(8),
+        timestamp: new Date().toLocaleString(),
+        artikel: selectedStockItem ? selectedStockItem.description : 'Handmatige Rolinzet',
+        rolBreedte: rollWidth,
+        maxLengte: maxRollLength,
+        lengte: result.lengte,
+        efficiency: result.efficiency,
+        packed: result.packed,
+        remainingOrders: result.remainingOrders,
+        seam: seam,
+        margins: margins,
+        algo: algo,
+        cost: selectedStockItem ? parseFloat(document.getElementById('select-roll-stock').options[document.getElementById('select-roll-stock').selectedIndex].getAttribute('data-cost')) : 0.0,
+        stockId: selectedStockItem ? selectedStockItem.id : null
+    };
+    
+    // Populate stats in UI Step 3 panel
+    document.getElementById('calc-artikel-name').innerText = selectedBatch.artikel;
+    document.getElementById('calc-batch-timestamp').innerText = `Berekening: ${selectedBatch.timestamp}`;
+    document.getElementById('calc-efficiency-val').innerText = selectedBatch.efficiency + '%';
+    document.getElementById('calc-len-val').innerText = (selectedBatch.lengte / 1000).toFixed(2) + ' m';
+    document.getElementById('calc-width-val').innerText = selectedBatch.rolBreedte + ' mm';
+    
+    const countNested = selectedBatch.packed.length;
+    const totalCount = countNested + selectedBatch.remainingOrders.length;
+    document.getElementById('calc-nested-parts').innerText = `${countNested} / ${totalCount} stuks`;
+    
+    const warnContainer = document.getElementById('warn-unpacked-container');
+    const calcUnpackedVal = document.getElementById('calc-unpacked-parts');
+    
+    if (selectedBatch.remainingOrders.length > 0) {
+        warnContainer.style.display = 'flex';
+        calcUnpackedVal.innerText = `${selectedBatch.remainingOrders.length} items pasten niet!`;
+    } else {
+        warnContainer.style.display = 'none';
+    }
+    
+    // Set SVG Leaves radial stroke yield
+    const radialFill = document.getElementById('radial-yield-fill');
+    const dashoffset = 251.2 - (251.2 * selectedBatch.efficiency / 100);
+    radialFill.style.strokeDashoffset = dashoffset;
+    
+    // Check if there is salvageable offcut at the end of the roll (>1.2 meters)
+    const unusedLength = selectedBatch.maxLengte - selectedBatch.lengte;
+    const minUsableLength = 1200; // 1.2m
+    const offcutAlert = document.getElementById('salvage-offcut-alert');
+    
+    if (unusedLength >= minUsableLength && !selectedBatch.stockId) {
+        offcutAlert.style.display = 'flex';
+        document.getElementById('salvage-offcut-dimensions').innerText = `Restant: ${selectedBatch.rolBreedte} x ${(unusedLength / 1000).toFixed(1)} m. Klik om direct te bewaren!`;
+    } else {
+        offcutAlert.style.display = 'none';
+    }
+    
+    goToStep(3);
+}
+
+function commitCurrentBatchToDatabase() {
+    if (!selectedBatch) return;
+    
+    const tx = db.transaction(['batches', 'stock'], 'readwrite');
+    const batchesStore = tx.objectStore('batches');
+    const stockStore = tx.objectStore('stock');
+    
+    // Deduct stock length from active inventory if matched
+    if (selectedBatch.stockId) {
+        const getReq = stockStore.get(selectedBatch.stockId);
+        getReq.onsuccess = function(e) {
+            const stockItem = e.target.result;
+            if (stockItem) {
+                // Deduct matching millimeter lengths
+                stockItem.length = Math.max(0, stockItem.length - selectedBatch.lengte);
+                stockStore.put(stockItem);
+                console.log(`Deducted ${selectedBatch.lengte}mm from stock index: ${selectedBatch.stockId}`);
+            }
+        };
+    }
+    
+    batchesStore.put(selectedBatch);
+    
+    tx.oncomplete = function() {
+        alert('Nesting batch advies succesvol geboekt van voorraad en opgeslagen.');
+        switchView('dashboard');
+    };
+}
+
+// Save leftover offcuts back to db
+document.getElementById('btn-save-offcut-to-db').addEventListener('click', () => {
+    if (!selectedBatch) return;
+    
+    const unusedLength = selectedBatch.maxLengte - selectedBatch.lengte;
+    
+    const tx = db.transaction('stock', 'readwrite');
+    tx.objectStore('stock').add({
+        description: `Bruikbaar Reststuk (${selectedBatch.id})`,
+        type: 'Vinyl',
+        width: selectedBatch.rolBreedte,
+        length: unusedLength,
+        cost: selectedBatch.cost || 0.0,
+        origin: 'offcut'
+    });
+    
+    tx.oncomplete = function() {
+        alert('Reststuk succesvol opgeslagen in uw materiaallijst.');
+        document.getElementById('salvage-offcut-alert').style.display = 'none';
+    };
+});
+
+// 12. POPULATION UTILITIES
+function populateWorkspaceInventoryDropdown() {
+    const selectStock = document.getElementById('select-roll-stock');
+    
+    // Clear old options except manual
+    while (selectStock.options.length > 1) {
+        selectStock.remove(1);
+    }
+    
+    if (!db) return;
+    
+    db.transaction('stock', 'readonly').objectStore('stock').getAll().onsuccess = function(e) {
+        const stocks = e.target.result;
+        stocks.forEach(s => {
+            const lenM = (s.length / 1000).toFixed(1);
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.setAttribute('data-width', s.width);
+            opt.setAttribute('data-length', s.length);
+            opt.setAttribute('data-desc', s.description);
+            opt.setAttribute('data-cost', s.cost);
+            opt.innerHTML = `[${s.type.toUpperCase()}] ${s.description} - ${s.width}mm x ${lenM}m (${s.origin === 'offcut' ? 'RESTSTUK' : 'ROL'})`;
+            selectStock.appendChild(opt);
+        });
+    };
+}
+
+function loadDashboardStats() {
+    if (!db) return;
+    
+    const tx = db.transaction(['batches', 'stock'], 'readonly');
+    const batchesStore = tx.objectStore('batches');
+    const stockStore = tx.objectStore('stock');
+    
+    batchesStore.getAll().onsuccess = function(e) {
+        const batches = e.target.result;
+        document.getElementById('dash-batches').innerText = batches.length;
+        
+        let avgEff = 0;
+        let totalSaved = 0;
+        
+        if (batches.length > 0) {
+            let sumEff = 0;
+            batches.forEach(b => {
+                sumEff += b.efficiency;
+                // Calculate saved material (based on unused sheet areas)
+                const totalArea = b.rolBreedte * b.lengte;
+                const usedArea = b.packed.reduce((sum, p) => sum + (p.w_orig * p.l_orig), 0);
+                totalSaved += Math.max(0, (totalArea - usedArea) / 1000000); // square meters saved
+            });
+            avgEff = Math.round(sumEff / batches.length);
+        }
+        
+        document.getElementById('dash-efficiency').innerText = avgEff + '%';
+        document.getElementById('dash-saved').innerText = totalSaved.toFixed(1) + ' m²';
+        
+        // Pop history table
+        const tbody = document.getElementById('tbody-batches-history');
+        tbody.innerHTML = '';
+        
+        if (batches.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-secondary py-8">Nog geen batches berekend. Start een nesting sessie!</td></tr>`;
+        } else {
+            batches.slice(-5).reverse().forEach(b => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-mono">${b.id}</td>
+                    <td><strong>${b.artikel}</strong></td>
+                    <td>${b.rolBreedte} mm</td>
+                    <td>${(b.lengte/1000).toFixed(2)} m</td>
+                    <td><span class="badge ${b.efficiency < 70 ? 'badge-red' : (b.efficiency < 85 ? 'badge-orange' : 'badge-green')}">${b.efficiency}%</span></td>
+                    <td>${b.timestamp.split(' ')[0]}</td>
+                    <td>
+                        <button class="btn btn-secondary btn-icon view-history-batch" data-id="${b.id}" style="padding:4px; height:32px; width:32px;"><i class="fa-solid fa-eye"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            document.querySelectorAll('.view-history-batch').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.getAttribute('data-id');
+                    batchesStore.get(id).onsuccess = function(evt) {
+                        const batch = evt.target.result;
+                        if (batch) {
+                            selectedBatch = batch;
+                            switchView('workspace');
+                            goToStep(3);
+                        }
+                    };
+                });
+            });
+        }
+    };
+    
+    stockStore.getAll().onsuccess = function(e) {
+        const stocks = e.target.result;
+        document.getElementById('dash-active-rolls').innerText = stocks.length;
+        
+        const tbody = document.getElementById('tbody-dash-stock');
+        tbody.innerHTML = '';
+        
+        stocks.slice(0, 5).forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${s.description}</strong></td>
+                <td>${s.width} mm</td>
+                <td><span class="badge ${s.origin === 'offcut' ? 'badge-orange' : 'badge-blue'}">${s.origin === 'offcut' ? 'Offcut' : 'Nieuw'}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    };
+}
+
+function loadInventoryList() {
+    if (!db) return;
+    
+    db.transaction('stock', 'readonly').objectStore('stock').getAll().onsuccess = function(e) {
+        const stocks = e.target.result;
+        document.getElementById('total-inventory-text').innerText = `${stocks.length} materialen in beheer`;
+        
+        const tbody = document.getElementById('tbody-full-inventory');
+        tbody.innerHTML = '';
+        
+        if (stocks.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-secondary py-8">Geen actieve voorraad rollen. Voeg hiernaast voorraad toe!</td></tr>`;
+            return;
+        }
+        
+        stocks.forEach(s => {
+            const tr = document.createElement('tr');
+            const costText = s.cost ? `€ ${s.cost.toFixed(2)}` : '-';
+            tr.innerHTML = `
+                <td class="font-mono">#${s.id}</td>
+                <td><strong>${s.description}</strong></td>
+                <td>${s.type}</td>
+                <td>${s.width} mm</td>
+                <td>${(s.length / 1000).toFixed(2)} m</td>
+                <td>${costText}</td>
+                <td><span class="badge ${s.origin === 'offcut' ? 'badge-orange' : 'badge-blue'}">${s.origin === 'offcut' ? 'Offcut Restant' : 'Nieuwe Rol'}</span></td>
+                <td>
+                    <button class="btn btn-secondary btn-icon text-red-500 delete-stock-btn" data-id="${s.id}" style="padding:4px; height:32px; width:32px;"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        document.querySelectorAll('.delete-stock-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (confirm('Weet u zeker dat u dit materiaal wilt verwijderen uit uw voorraad?')) {
+                    const id = parseInt(btn.getAttribute('data-id'));
+                    const tx = db.transaction('stock', 'readwrite');
+                    tx.objectStore('stock').delete(id);
+                    tx.oncomplete = () => loadInventoryList();
+                }
+            });
+        });
+    };
+}
+
+// 13. PRINT SETUP UTILITIES
+function setupPrintWerkbonView() {
+    if (!selectedBatch) return;
+    
+    document.getElementById('print-batch-id').innerText = selectedBatch.id;
+    document.getElementById('print-timestamp').innerText = selectedBatch.timestamp;
+    document.getElementById('print-artikel-desc').innerText = selectedBatch.artikel;
+    document.getElementById('print-artikel-width').innerText = `${selectedBatch.rolBreedte} mm`;
+    document.getElementById('print-req-len').innerText = `${(selectedBatch.lengte / 1000).toFixed(2)} m`;
+    document.getElementById('print-eff-score').innerText = `${selectedBatch.efficiency}%`;
+    document.getElementById('print-kerf').innerText = `${selectedBatch.seam} mm`;
+    document.getElementById('print-marge-sides').innerText = `${selectedBatch.margins.sides} mm`;
+    
+    const nestedCount = selectedBatch.packed.length;
+    document.getElementById('print-items-count').innerText = `${nestedCount} stuks`;
+    
+    // Inject vector SVG print container
+    const svgContainer = document.getElementById('print-visual-svg-container');
+    svgContainer.innerHTML = generateSVGData(selectedBatch);
+    
+    // Inject rows
+    const tbody = document.getElementById('print-orders-tbody');
+    tbody.innerHTML = '';
+    
+    selectedBatch.packed.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #ddd';
+        tr.innerHTML = `
+            <td style="padding:8px;">${p.id}</td>
+            <td style="padding:8px;">${p.w} mm</td>
+            <td style="padding:8px;">${p.l} mm</td>
+            <td style="padding:8px;">${p.w_orig} x ${p.l_orig} mm</td>
+            <td style="padding:8px;">${p.rotated ? 'Geroteerd (90°)' : 'Standaard'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    document.getElementById('print-werkbon-panel').classList.add('print-active');
+}
+
+function setupPrintLabelsView() {
+    const container = document.getElementById('label-print-container');
+    container.innerHTML = '';
+    
+    if (!selectedBatch) return;
+    
+    selectedBatch.packed.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'label-item flex flex-col justify-center items-center text-center';
+        div.setAttribute('data-ordernr', p.id);
+        div.style.border = '2px solid #000';
+        div.style.padding = '15px';
+        div.style.backgroundColor = '#fff';
+        div.style.color = '#000';
+        div.style.height = '180px';
+        div.style.pageBreakInside = 'avoid';
+        
+        div.innerHTML = `
+            <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 6px;">${selectedBatch.artikel}</div>
+            <svg id="barcode-print-${i}" class="barcode-svg"></svg>
+            <div style="font-size: 18px; font-weight: 900; margin-top: 8px;">${p.w_orig}x${p.l_orig} mm</div>
+            <div style="font-size: 10px; color:#555; margin-top: 2px;">Batch: ${selectedBatch.id}</div>
+        `;
+        
+        container.appendChild(div);
+    });
+    
+    document.getElementById('print-labels-panel').classList.add('print-active');
+    
+    // Call barcode drawing trigger
+    setTimeout(generateHTMLBarcodes, 50);
+}
+
+// Helper: download trigger
+function downloadFile(content, fileName, contentType) {
+    const a = document.createElement("a");
+    const file = new Blob([content], { type: contentType });
+    a.href = URL.createObjectURL(file);
+    a.download = fileName;
+    a.click();
+}
+
+</script>
+    <script>
+/**
+ * RollNest Pro - Developer API Playground Module
+ * Manages token generations, interactive payload parsing, mock REST responses, and multi-language code snippets.
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+    setupAPIEventListeners();
+});
+
+function setupAPIEventListeners() {
+    // API Tokens copy handler
+    const btnCopy = document.getElementById('btn-copy-token');
+    if (btnCopy) {
+        btnCopy.addEventListener('click', () => {
+            const tokenText = document.getElementById('api-token-value').innerText;
+            navigator.clipboard.writeText(tokenText).then(() => {
+                alert('API token gekopieerd naar klembord!');
+                btnCopy.innerHTML = '<i class="fa-solid fa-check text-green-500"></i>';
+                setTimeout(() => {
+                    btnCopy.innerHTML = '<i class="fa-regular fa-copy"></i>';
+                }, 2000);
+            });
+        });
+    }
+
+    // Token generator
+    const btnGenerateKey = document.getElementById('btn-generate-api-key');
+    if (btnGenerateKey) {
+        btnGenerateKey.addEventListener('click', () => {
+            const randomHex = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
+            const newKey = `rn_live_${randomHex}`;
+            document.getElementById('api-token-value').innerText = newKey;
+            
+            // Re-render code tabs with new token key
+            updateAPICodeSnippets(newKey);
+            alert('Nieuwe API Live token gegenereerd.');
+        });
+    }
+
+    // Tab switcher in developer console
+    const tabBtns = document.querySelectorAll('[data-api-tab]');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const targetTab = btn.getAttribute('data-api-tab');
+            document.querySelectorAll('.api-tab-pane').forEach(pane => {
+                pane.style.display = 'none';
+            });
+            
+            const activePane = document.getElementById(`api-pane-${targetTab}`);
+            if (activePane) {
+                activePane.style.display = 'block';
+            }
+        });
+    });
+
+    // Execute Sandbox REST request trigger
+    const btnExecute = document.getElementById('btn-execute-api-call');
+    if (btnExecute) {
+        btnExecute.addEventListener('click', () => {
+            executeMockAPICall();
+        });
+    }
+}
+
+function updateAPICodeSnippets(token) {
+    const paneCurl = document.querySelector('#api-pane-curl .api-console-output');
+    const paneJS = document.querySelector('#api-pane-javascript .api-console-output');
+    const panePython = document.querySelector('#api-pane-python .api-console-output');
+    
+    if (paneCurl) {
+        paneCurl.innerText = `curl -X POST http://localhost:3000/api/nest \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${token}" \\
+  -d '{
+    "stock": { "width": 1600, "maxLength": 30000, "seam": 5 },
+    "orders": [
+      { "id": "ORD-1", "width": 500, "length": 1000, "quantity": 3, "allowRotation": true }
+    ]
+  }'`;
+    }
+    
+    if (paneJS) {
+        paneJS.innerText = `const payload = {
+  stock: { width: 1600, maxLength: 30000, seam: 5 },
+  orders: [
+    { id: "ORD-1", width: 500, length: 1000, quantity: 3, allowRotation: true }
+  ]
+};
+
+fetch('http://localhost:3000/api/nest', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ${token}'
+  },
+  body: JSON.stringify(payload)
+})
+.then(res => res.json())
+.then(data => console.log('Nesting layout berekend:', data));`;
+    }
+    
+    if (panePython) {
+        panePython.innerText = `import requests
+
+url = "http://localhost:3000/api/nest"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer ${token}"
+}
+
+payload = {
+    "stock": { "width": 1600, "maxLength": 30000, "seam": 5 },
+    "orders": [
+        { "id": "ORD-1", "width": 500, "length": 1000, "quantity": 3, "allowRotation": True }
+    ]
+}
+
+response = requests.post(url, json=payload, headers=headers)
+print("Yield %:", response.json()["efficiency"])`;
+    }
+}
+
+// Emulate backend REST server nesting execution on the client-side sandbox
+function executeMockAPICall() {
+    const payloadArea = document.getElementById('api-request-payload');
+    const outputConsole = document.getElementById('api-output-console');
+    
+    outputConsole.innerText = 'Verbinding maken met REST API endpoint...\nVerifiëren van Bearer Token...\nBestand parsen...';
+    
+    setTimeout(() => {
+        try {
+            const reqData = JSON.parse(payloadArea.value);
+            
+            if (!reqData.stock || !reqData.orders) {
+                throw new Error("Missing 'stock' or 'orders' array elements in JSON payload.");
+            }
+            
+            // Extract parameters
+            const width = reqData.stock.width || 1600;
+            const maxLength = reqData.stock.maxLength || 50000;
+            const seam = reqData.stock.seam || 5;
+            const margins = reqData.stock.margins || { top: 10, bottom: 10, sides: 15 };
+            
+            // Format order items
+            let itemsToPack = [];
+            reqData.orders.forEach(o => {
+                const qty = o.quantity || 1;
+                for (let i = 0; i < qty; i++) {
+                    itemsToPack.push({
+                        id: o.id || 'API-ITEM',
+                        w: o.width,
+                        l: o.length,
+                        w_orig: o.width,
+                        l_orig: o.length,
+                        allowRotation: o.allowRotation !== undefined ? o.allowRotation : true
+                    });
+                }
+            });
+            
+            // Run MaxRects packing
+            itemsToPack = sortItemsDecreasing(itemsToPack);
+            const packingResult = packMaxRects(itemsToPack, width, maxLength, seam, margins);
+            
+            // Format JSON REST API Response
+            const apiResponse = {
+                status: "success",
+                message: "Nesting configuration generated successfully.",
+                batchId: "API-BCH-" + Math.floor(Math.random()*90000 + 10000),
+                timestamp: new Date().toISOString(),
+                efficiency: packingResult.efficiency,
+                requiredLengthMM: packingResult.lengte,
+                yieldPercentage: packingResult.efficiency,
+                totalPartsNested: packingResult.packed.length,
+                packedItems: packingResult.packed.map(p => ({
+                    id: p.id,
+                    x: p.x,
+                    y: p.y,
+                    width: p.w,
+                    length: p.l,
+                    originalWidth: p.w_orig,
+                    originalLength: p.l_orig,
+                    isRotated: p.rotated
+                })),
+                unpackedItems: packingResult.remainingOrders.map(rem => ({
+                    id: rem.id,
+                    width: rem.w_orig,
+                    length: rem.l_orig
+                }))
+            };
+            
+            outputConsole.innerText = JSON.stringify(apiResponse, null, 2);
+            outputConsole.style.color = '#50fa7b'; // Dracula theme bright green on success
+            
+            // Update workspace context batch data so developers can instantly visual check the sandbox results
+            selectedBatch = {
+                id: apiResponse.batchId,
+                timestamp: new Date().toLocaleString(),
+                artikel: 'API Sandboxed Nesting',
+                rolBreedte: width,
+                maxLengte: maxLength,
+                lengte: packingResult.lengte,
+                efficiency: packingResult.efficiency,
+                packed: packingResult.packed,
+                remainingOrders: packingResult.remainingOrders,
+                seam: seam,
+                margins: margins,
+                algo: 'maxrects',
+                cost: 0.0,
+                stockId: null
+            };
+            
+            // Offer visualization link
+            const linkDiv = document.createElement('div');
+            linkDiv.style.marginTop = '12px';
+            linkDiv.innerHTML = `<button class="btn btn-primary" id="btn-view-api-nest"><i class="fa-solid fa-eye"></i> Bekijk Nesting op Canvas</button>`;
+            outputConsole.appendChild(linkDiv);
+            
+            document.getElementById('btn-view-api-nest').addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                document.querySelector('[data-view="workspace"]').classList.add('active');
+                switchView('workspace');
+                
+                // Populate stats in Step 3
+                document.getElementById('calc-artikel-name').innerText = selectedBatch.artikel;
+                document.getElementById('calc-batch-timestamp').innerText = `API Sandbox: ${selectedBatch.timestamp}`;
+                document.getElementById('calc-efficiency-val').innerText = selectedBatch.efficiency + '%';
+                document.getElementById('calc-len-val').innerText = (selectedBatch.lengte / 1000).toFixed(2) + ' m';
+                document.getElementById('calc-width-val').innerText = selectedBatch.rolBreedte + ' mm';
+                document.getElementById('calc-nested-parts').innerText = `${selectedBatch.packed.length} / ${selectedBatch.packed.length + selectedBatch.remainingOrders.length} stuks`;
+                
+                goToStep(3);
+            });
+            
+        } catch (err) {
+            outputConsole.innerText = `API ERROR: [400 Bad Request]\nDetails: ${err.message}`;
+            outputConsole.style.color = '#ff5555'; // Red error text
+        }
+    }, 800);
+}
+
+</script>
 </body>
 </html>
