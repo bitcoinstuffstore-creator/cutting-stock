@@ -1,492 +1,791 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roll Cutting Optimizer - Smart UX</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <style>
-        .step-hidden { display: none; }
-        .drag-over { background-color: #eff6ff; border-color: #3b82f6; }
-        
-        /* 2D Nesting Visualisatie */
-        .nesting-container { position: relative; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; height: 140px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
-        .nesting-roll { position: relative; height: 100%; background-color: #e2e8f0; display: inline-block; border-right: 2px dashed #94a3b8;}
-        .nesting-piece { position: absolute; background-color: #3b82f6; border: 1px solid #1e40af; opacity: 0.9; display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; font-weight: bold; overflow: hidden; transition: all 0.2s;}
-        .nesting-piece:hover { background-color: #1d4ed8; opacity: 1; z-index: 10; cursor: pointer; transform: scale(1.02); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        
-        .offcut-roll { background-color: #fef9c3; border-color: #facc15; }
-
-        /* Print Styling */
-        @media print {
-            body { background-color: white; padding: 0; margin: 0; }
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body.print-werkbon #werkbon-container { display: block !important; }
-            body.print-labels #label-container { display: flex !important; flex-wrap: wrap; gap: 10px; }
-            .label-item { width: 48%; border: 1px solid black; padding: 10px; margin-bottom: 10px; page-break-inside: avoid; }
-            .nesting-container { overflow: visible; border: 1px solid black; height: auto; min-height: 140px;}
-        }
-        .print-only { display: none; }
-    </style>
+    <title>RollNest Pro - 2D Nesting & Batching Optimizer</title>
+    <!-- Icons and Styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
-
-    <nav class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50 no-print">
-        <div class="flex items-center gap-3">
-            <div class="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-md">
-                <i class="fa-solid fa-scissors"></i>
-            </div>
-            <h1 class="text-xl font-bold text-slate-800 tracking-tight">Smart Optimizer</h1>
-            <span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-0.5 rounded-full font-bold ml-2">Genius UX</span>
-        </div>
-        <button onclick="resetProject()" class="text-slate-400 hover:text-red-500 font-bold py-2 px-4 rounded-lg text-sm transition-colors flex items-center">
-            <i class="fa-solid fa-rotate-right mr-2"></i> Herstart
-        </button>
-    </nav>
-
-    <main class="flex-grow flex items-center justify-center p-4 md:p-8 no-print">
+<body>
+    <div class="app-container">
         
-        <div id="step-1" class="max-w-2xl w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden p-8 transition-all">
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Snij-optimalisatie</h2>
-                <p class="text-slate-500 mt-2 text-sm">Zet je parameters goed en haal het maximale uit je materiaal.</p>
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <i class="fa-solid fa-wand-magic-sparkles logo-icon"></i>
+                <span class="logo-text">RollNest Pro</span>
             </div>
             
-            <div class="space-y-6">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Inkoop Rolbreedtes (mm)</label>
-                    <input type="text" id="rolBreedtesInput" value="1200, 1500, 2000, 2500, 3200" class="w-full bg-slate-50 text-xl font-bold text-slate-800 border-2 border-slate-200 rounded-xl p-4 focus:border-blue-500 focus:bg-white outline-none transition-all shadow-inner">
-                </div>
-
-                <div class="border-t border-slate-100 pt-6">
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex justify-between">
-                        <span>Restvoorraad inzetten (Optioneel)</span>
-                        <span class="text-slate-400 font-normal normal-case">Breedte x Lengte</span>
-                    </label>
-                    <input type="text" id="restStukkenInput" placeholder="Bijv: 2500x3000, 1200x1500" class="w-full bg-white text-md font-medium text-slate-700 border border-slate-200 rounded-lg p-3 focus:border-blue-500 outline-none transition-all placeholder-slate-300">
-                </div>
-            </div>
-
-            <button onclick="goToStep(2)" class="w-full mt-10 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:-translate-y-0.5 text-lg flex justify-center items-center">
-                Volgende Stap <i class="fa-solid fa-arrow-right ml-2"></i>
-            </button>
-        </div>
-
-        <div id="step-2" class="max-w-3xl w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden step-hidden p-8 transition-all">
-            <div class="flex items-center justify-between mb-8">
-                <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Order Export Uploaden</h2>
-                <button onclick="goToStep(1)" class="bg-slate-100 text-slate-500 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors">Terug</button>
-            </div>
-
-            <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-2xl p-12 text-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all mb-8 group">
-                <div class="w-20 h-20 bg-slate-100 group-hover:bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors">
-                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 group-hover:text-blue-600"></i>
-                </div>
-                <p class="text-slate-700 font-bold text-lg mb-1">Sleep je bestand hierheen</p>
-                <p class="text-sm text-slate-400 mb-6">.csv of .xlsx bestand</p>
-                <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
-                <button onclick="document.getElementById('fileInput').click()" class="bg-white border border-slate-200 shadow-sm text-slate-600 px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors">Bladeren</button>
-            </div>
+            <nav class="nav-menu">
+                <li class="nav-item active" data-view="dashboard">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </li>
+                <li class="nav-item" data-view="workspace">
+                    <i class="fa-solid fa-scissors"></i>
+                    <span>Nesting Workspace</span>
+                </li>
+                <li class="nav-item" data-view="inventory">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span>Roll Inventory</span>
+                </li>
+                <li class="nav-item" data-view="api-portal">
+                    <i class="fa-solid fa-code"></i>
+                    <span>Developer API</span>
+                </li>
+                <li class="nav-item" data-view="settings">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Instellingen</span>
+                </li>
+            </nav>
             
-            <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 flex items-center justify-between mb-8">
-                <div>
-                    <label class="block font-bold text-slate-700 text-sm">Snijmarge / Naadtoeslag per doek</label>
-                    <p class="text-xs text-slate-500 mt-0.5">Extra ruimte (in mm) rondom elk ingelezen doek.</p>
+            <div class="sidebar-footer">
+                <div class="system-status">
+                    <div class="status-dot"></div>
+                    <span id="db-status-text">Database Gekoppeld</span>
                 </div>
-                <div class="relative">
-                    <input type="number" id="naadToeslag" value="20" class="w-24 text-right pr-8 bg-white text-lg font-bold text-slate-800 border border-slate-300 rounded-lg p-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none">
-                    <span class="absolute right-3 top-3 text-xs font-bold text-slate-400">mm</span>
-                </div>
+                <button class="btn btn-secondary btn-icon" id="theme-toggle" title="Wissel Thema">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
             </div>
+        </aside>
 
-            <button onclick="berekenInkoop()" class="w-full hidden id-btn-calc bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:-translate-y-0.5 text-lg">
-                <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Optimaliseer Productie
-            </button>
-        </div>
-
-        <div id="step-3" class="max-w-7xl w-full step-hidden transition-all">
+        <!-- Main Content Area -->
+        <main class="main-content">
             
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6 flex flex-col lg:flex-row justify-between items-center gap-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800 tracking-tight mb-1">Productie Overzicht</h2>
-                    <p class="text-sm text-slate-500">De meest efficiënte indeling is berekend.</p>
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-title-container">
+                    <h1 class="header-title" id="page-title">Dashboard</h1>
+                    <span class="header-subtitle" id="page-subtitle">Prestaties en statistieken in één oogopslag</span>
                 </div>
                 
-                <div class="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <div class="text-right">
-                        <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Totale Benutting</p>
-                        <p class="text-2xl font-black text-slate-800" id="global-efficiency">0%</p>
+                <div class="header-actions">
+                    <div class="system-status">
+                        <i class="fa-solid fa-database text-secondary"></i>
+                        <span class="text-secondary" id="active-db-indicator">IndexedDB Local</span>
                     </div>
-                    <div class="w-16 h-16 rounded-full border-4 border-slate-200 flex items-center justify-center relative overflow-hidden bg-white">
-                        <div id="global-eff-fill" class="absolute bottom-0 w-full bg-green-500 transition-all duration-1000" style="height: 0%;"></div>
-                        <i class="fa-solid fa-leaf text-white z-10 text-xl drop-shadow-md"></i>
+                    <button class="btn btn-primary" id="btn-quick-nest">
+                        <i class="fa-solid fa-scissors"></i>
+                        <span>Start Nieuwe Nest</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- VIEW 1: Dashboard Panel -->
+            <div class="view-panel active" id="view-dashboard">
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-card-title">Globale Efficiëntie</span>
+                        <div class="stat-card-value" id="dash-efficiency">0%</div>
+                        <div class="stat-card-footer">
+                            <span class="trend-indicator trend-up"><i class="fa-solid fa-arrow-trend-up"></i> +4.2%</span>
+                            <span>t.o.v. vorige maand</span>
+                        </div>
+                        <i class="fa-solid fa-leaf stat-card-glow"></i>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-card-title">Materialen Bespaard</span>
+                        <div class="stat-card-value" id="dash-saved">0.0m</div>
+                        <div class="stat-card-footer">
+                            <span class="trend-indicator trend-up"><i class="fa-solid fa-arrow-trend-up"></i> +12.5%</span>
+                            <span>materiaalbehoud</span>
+                        </div>
+                        <i class="fa-solid fa-recycle stat-card-glow"></i>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-card-title font-bold">Actieve Rollen</span>
+                        <div class="stat-card-value" id="dash-active-rolls">0</div>
+                        <div class="stat-card-footer">
+                            <span id="dash-low-stock-count" class="text-secondary">Geen waarschuwingen</span>
+                        </div>
+                        <i class="fa-solid fa-scroll stat-card-glow"></i>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-card-title">Berekende Batches</span>
+                        <div class="stat-card-value" id="dash-batches">0</div>
+                        <div class="stat-card-footer">
+                            <span>Compleet opgeslagen</span>
+                        </div>
+                        <i class="fa-solid fa-layer-group stat-card-glow"></i>
                     </div>
                 </div>
 
-                <div class="flex gap-2">
-                    <button onclick="exporteerCSV()" class="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-lg border border-slate-200 text-sm shadow-sm transition-all flex items-center">
-                        <i class="fa-solid fa-file-excel mr-2 text-green-600"></i> Data
-                    </button>
-                    <button onclick="printLabels()" class="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-lg border border-slate-200 text-sm shadow-sm transition-all flex items-center">
-                        <i class="fa-solid fa-barcode mr-2 text-slate-800"></i> Labels
-                    </button>
-                    <button onclick="printWerkbon()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-lg shadow-md shadow-blue-600/20 text-sm transition-all flex items-center">
-                        <i class="fa-solid fa-print mr-2"></i> Werkbon
-                    </button>
+                <!-- Double Layout Grid -->
+                <div class="db-layout-grid">
+                    <!-- Left: Batches History -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Recente Nesting Batch Adviezen</h2>
+                            <button class="btn btn-secondary btn-icon" id="btn-refresh-history" title="Ververs">
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
+                        </div>
+                        <div class="table-container">
+                            <table class="custom-table" id="table-batches-history">
+                                <thead>
+                                    <tr>
+                                        <th>Batch ID</th>
+                                        <th>Omschrijving</th>
+                                        <th>Inzet Breedte</th>
+                                        <th>Nodig (m)</th>
+                                        <th>Benutting</th>
+                                        <th>Datum</th>
+                                        <th>Actie</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-batches-history">
+                                    <!-- Dynamic rows loaded from IndexedDB -->
+                                    <tr>
+                                        <td colspan="7" class="text-center text-secondary py-8">Nog geen batches berekend. Start een nesting sessie!</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right: Quick Stock Overview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Voorraad & Reststukken</h2>
+                        </div>
+                        <div class="table-container">
+                            <table class="custom-table" id="table-dash-stock">
+                                <thead>
+                                    <tr>
+                                        <th>Materiaal</th>
+                                        <th>Breedte</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-dash-stock">
+                                    <!-- Loaded dynamically -->
+                                    <tr>
+                                        <td colspan="3" class="text-center text-secondary">Geen voorraad gevonden.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="flex items-center justify-between mb-4 px-2">
-                <span class="text-sm font-bold text-slate-500" id="batch-count">0 Batches</span>
-                <div class="flex items-center bg-white rounded-lg border border-slate-200 p-1 shadow-sm">
-                    <button onclick="sorteerBatches('aanbevolen')" id="btn-sort-aanbevolen" class="sort-btn bg-slate-100 text-slate-800 px-4 py-1.5 rounded-md text-xs font-bold transition-colors">Aanbevolen</button>
-                    <button onclick="sorteerBatches('efficiency')" id="btn-sort-efficiency" class="sort-btn text-slate-500 hover:text-slate-800 px-4 py-1.5 rounded-md text-xs font-bold transition-colors">Efficiëntie</button>
-                    <button onclick="sorteerBatches('deadline')" id="btn-sort-deadline" class="sort-btn text-slate-500 hover:text-slate-800 px-4 py-1.5 rounded-md text-xs font-bold transition-colors">Deadline</button>
+            <!-- VIEW 2: Nesting Workspace Panel -->
+            <div class="view-panel" id="view-workspace">
+                
+                <!-- Wizard Steps Header -->
+                <div class="step-indicator-bar">
+                    <div class="step-indicator-item active" id="step-header-1">
+                        <div class="step-number">1</div>
+                        <span>Orders Uploaden</span>
+                    </div>
+                    <div class="step-indicator-item" id="step-header-2">
+                        <div class="step-number">2</div>
+                        <span>Parameters</span>
+                    </div>
+                    <div class="step-indicator-item" id="step-header-3">
+                        <div class="step-number">3</div>
+                        <span>Optimalisatie & Canvas</span>
+                    </div>
                 </div>
-            </div>
-            
-            <div id="batchResultaten" class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                </div>
-        </div>
-    </main>
 
-    <div id="werkbon-container" class="print-only p-8">
-        <div class="flex justify-between items-end border-b-2 border-black pb-4 mb-6">
-            <div>
-                <h1 class="text-4xl font-black uppercase">Productie Werkbon</h1>
-                <p class="text-lg font-bold mt-1">Snij-optimalisatie & Nesting</p>
+                <!-- STEP 1: Upload and Input Orders -->
+                <div class="step-pane active" id="step-pane-1">
+                    <div class="card">
+                        <h2 class="card-title mb-4">Stap 1: Upload productiebestanden of voer handmatig in</h2>
+                        
+                        <!-- Drag and Drop Area -->
+                        <div class="upload-zone" id="csv-drop-zone">
+                            <i class="fa-solid fa-file-csv upload-icon"></i>
+                            <h3 class="font-bold text-lg mb-2">Sleep uw CSV orders bestand hierheen</h3>
+                            <p class="text-secondary text-sm mb-4">Of klik om handmatig een bestand te selecteren van uw computer</p>
+                            <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                            <div class="flex gap-4 justify-center">
+                                <button class="btn btn-secondary" id="btn-load-sample-csv">
+                                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                                    <span>Laad Voorbeeld CSV</span>
+                                </button>
+                                <a href="#" class="btn btn-secondary" id="btn-download-template" style="display:none;">Sjabloon Downloaden</a>
+                            </div>
+                        </div>
+
+                        <!-- Manual Spreadsheet Inputs Grid -->
+                        <div class="card-header mt-8">
+                            <h3 class="font-bold text-md"><i class="fa-solid fa-list-check mr-2"></i> Orders Batch Bewerken</h3>
+                            <div class="flex gap-2">
+                                <button class="btn btn-secondary" id="btn-add-order-row">
+                                    <i class="fa-solid fa-plus"></i> Add Row
+                                </button>
+                                <button class="btn btn-secondary text-red-500" id="btn-clear-orders">
+                                    <i class="fa-solid fa-trash-can"></i> Alles Wissen
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-container mt-4">
+                            <table class="custom-table" id="table-orders-input">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 140px;">Order/Item NR</th>
+                                        <th>Materiaal Omschrijving</th>
+                                        <th style="width: 110px;">Breedte (mm)</th>
+                                        <th style="width: 110px;">Lengte (mm)</th>
+                                        <th style="width: 80px;">Aantal</th>
+                                        <th style="width: 120px;">Deadline</th>
+                                        <th style="width: 110px;">Rotatie Toegestaan</th>
+                                        <th style="width: 60px;">Actie</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-orders-input">
+                                    <!-- Row items will be generated here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex justify-end gap-4 mt-6">
+                            <button class="btn btn-primary" id="btn-next-to-step-2">
+                                <span>Volgende: Parameters Definiëren</span>
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Parameters and Core Settings -->
+                <div class="step-pane" id="step-pane-2">
+                    <div class="card max-w-3xl mx-auto">
+                        <h2 class="card-title mb-6">Stap 2: Kies Rolvoorraad en Snij-instellingen</h2>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="select-roll-stock">Selecteer Rol Breedte of Bruikbaar Reststuk</label>
+                            <select class="form-control" id="select-roll-stock">
+                                <option value="manual">-- Handmatige invoer --</option>
+                                <!-- Populated dynamically from inventory -->
+                            </select>
+                        </div>
+
+                        <div class="form-grid" id="manual-roll-inputs">
+                            <div class="form-group">
+                                <label class="form-label" for="param-manual-width">Handmatige Breedte (mm)</label>
+                                <input type="number" class="form-control" id="param-manual-width" value="1600" min="100">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="param-manual-length">Maximale Rol Lengte (mm)</label>
+                                <input type="number" class="form-control" id="param-manual-length" value="50000" min="500">
+                            </div>
+                        </div>
+
+                        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 24px 0;">
+
+                        <h3 class="font-bold text-sm mb-4">Snij Marges en Kwaliteitsgrenzen</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="param-seam">Naad / Kerf Tussen Items (mm)</label>
+                                <input type="number" class="form-control" id="param-seam" value="4" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="param-side-margin">Zijwaartse Marges (mm)</label>
+                                <input type="number" class="form-control" id="param-side-margin" value="10" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="param-top-margin">Kop / Staart Marges (mm)</label>
+                                <input type="number" class="form-control" id="param-top-margin" value="15" min="0">
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="param-algorithm">Nesting Algoritme</label>
+                                <select class="form-control" id="param-algorithm">
+                                    <option value="maxrects">MaxRects 2D Optimizer (Aanbevolen - Hoogste Benutting)</option>
+                                    <option value="guillotine">Guillotine Split-Cuts (Snel en uitlijnbaar)</option>
+                                    <option value="shelf">Linear Shelf Pack (Standaard Shelf Sorteren)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="param-rotation">Standaard Rotatie Regel</label>
+                                <select class="form-control" id="param-rotation">
+                                    <option value="allow-90">Vrije Rotatie (Maximaliseer Rendement)</option>
+                                    <option value="none">Geen Rotatie (Vaste Patroonrichting / Grain)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between gap-4 mt-8">
+                            <button class="btn btn-secondary" id="btn-back-to-step-1">
+                                <i class="fa-solid fa-arrow-left"></i>
+                                <span>Terug</span>
+                            </button>
+                            <button class="btn btn-primary pulse-glow-cyan" id="btn-run-nesting">
+                                <i class="fa-solid fa-calculator"></i>
+                                <span>Bereken Optimale Nesting</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: visual layout canvas and adjustments -->
+                <div class="step-pane" id="step-pane-3">
+                    <!-- Offcut alert overlay if batch has salvageable space -->
+                    <div class="offcut-card" id="salvage-offcut-alert" style="display: none;">
+                        <div>
+                            <span class="badge badge-orange mr-2"><i class="fa-solid fa-recycle mr-1"></i> Bruikbaar reststuk gedetecteerd</span>
+                            <span class="text-sm font-semibold" id="salvage-offcut-dimensions">Overgebleven: 1200 x 4300 mm. Sla dit op in de database!</span>
+                        </div>
+                        <button class="btn btn-primary btn-secondary" id="btn-save-offcut-to-db">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Sla Restvoorraad Op</span>
+                        </button>
+                    </div>
+
+                    <div class="nesting-workspace-grid">
+                        
+                        <!-- Left pane: stats & export -->
+                        <div class="nesting-sidebar">
+                            <div>
+                                <h3 class="font-bold text-md" id="calc-artikel-name">Materiaal Batch Advies</h3>
+                                <span class="text-xs text-secondary" id="calc-batch-timestamp">Gegenereerd: Net</span>
+                            </div>
+
+                            <div class="card-header mt-2" style="margin-bottom:0; padding:0;">
+                                <span class="text-xs font-bold text-secondary uppercase tracking-wider">Benutting Score</span>
+                            </div>
+                            
+                            <!-- Custom Leaf SVG Progress circle -->
+                            <div class="leaf-meter-container">
+                                <svg class="leaf-meter-svg" viewBox="0 0 100 100">
+                                    <circle class="leaf-meter-track" cx="50" cy="50" r="40"></circle>
+                                    <circle class="leaf-meter-fill" id="radial-yield-fill" cx="50" cy="50" r="40" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+                                </svg>
+                                <div class="leaf-meter-value" id="calc-efficiency-val">0%</div>
+                            </div>
+
+                            <hr style="border:0; border-top:1px solid var(--border-color);">
+
+                            <!-- Metric counters -->
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="display:flex; justify-content:space-between; font-size:13px;">
+                                    <span class="text-secondary"><i class="fa-solid fa-scroll mr-1"></i> Benodigde Lengte:</span>
+                                    <span class="font-bold" id="calc-len-val">0.00 m</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; font-size:13px;">
+                                    <span class="text-secondary"><i class="fa-solid fa-arrows-left-right mr-1"></i> Rolbreedte Inzet:</span>
+                                    <span class="font-bold" id="calc-width-val">0 mm</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; font-size:13px;">
+                                    <span class="text-secondary"><i class="fa-solid fa-layer-group mr-1"></i> Nested items:</span>
+                                    <span class="font-bold text-green-500" id="calc-nested-parts">0 / 0</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; font-size:13px; color: var(--accent-red);" id="warn-unpacked-container">
+                                    <span class="text-secondary"><i class="fa-solid fa-triangle-exclamation mr-1 text-red-500"></i> Niet nestbaar:</span>
+                                    <span class="font-bold" id="calc-unpacked-parts">0 items</span>
+                                </div>
+                            </div>
+
+                            <hr style="border:0; border-top:1px solid var(--border-color);">
+
+                            <!-- Exports & printing -->
+                            <h4 class="font-bold text-xs text-secondary uppercase tracking-wider">Export & Productie</h4>
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                <button class="btn btn-primary" id="btn-commit-batch-to-inventory">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span>Boek Af Van Voorraad</span>
+                                </button>
+                                <button class="btn btn-secondary" id="btn-export-dxf">
+                                    <i class="fa-solid fa-circle-arrow-down"></i>
+                                    <span>Download DXF (CNC)</span>
+                                </button>
+                                <button class="btn btn-secondary" id="btn-export-svg">
+                                    <i class="fa-solid fa-file-image"></i>
+                                    <span>Download SVG Bestand</span>
+                                </button>
+                                <button class="btn btn-secondary" id="btn-export-csv-results">
+                                    <i class="fa-solid fa-file-excel"></i>
+                                    <span>Productie CSV Excel</span>
+                                </button>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                                    <button class="btn btn-secondary" id="btn-print-werkbon">
+                                        <i class="fa-solid fa-print"></i> Werkbon
+                                    </button>
+                                    <button class="btn btn-secondary" id="btn-print-labels">
+                                        <i class="fa-solid fa-barcode"></i> Labels
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-secondary mt-auto" id="btn-restart-wizard">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <span>Nieuwe Berekening</span>
+                            </button>
+                        </div>
+
+                        <!-- Right pane: Canvas visualization -->
+                        <div class="nesting-canvas-panel">
+                            <div class="canvas-toolbar">
+                                <span class="font-bold text-xs uppercase tracking-wide text-secondary"><i class="fa-solid fa-binoculars mr-1"></i> Zoom/Pan Interactief</span>
+                                <button class="btn btn-secondary btn-icon" id="btn-zoom-in" title="Inzoomen"><i class="fa-solid fa-plus"></i></button>
+                                <button class="btn btn-secondary btn-icon" id="btn-zoom-out" title="Uitzoomen"><i class="fa-solid fa-minus"></i></button>
+                                <button class="btn btn-secondary btn-icon" id="btn-zoom-fit" title="Passend maken"><i class="fa-solid fa-expand"></i></button>
+                                
+                                <span class="text-secondary mx-2">|</span>
+                                
+                                <span class="font-bold text-xs uppercase tracking-wide text-secondary"><i class="fa-solid fa-hand mr-1"></i> Handmatig Bewerken</span>
+                                <button class="btn btn-secondary btn-icon" id="btn-rotate-piece" title="Roteer Geselecteerd Item (R)"><i class="fa-solid fa-rotate-right"></i></button>
+                                <button class="btn btn-secondary btn-icon text-red-500" id="btn-delete-piece" title="Verwijder uit Nesting"><i class="fa-solid fa-trash"></i></button>
+                                
+                                <div style="margin-left: auto; display: flex; align-items:center; gap: 8px;">
+                                    <span class="text-xs text-secondary font-semibold" id="edit-mode-indicator">Modus: Selecteren & Slepen</span>
+                                </div>
+                            </div>
+
+                            <div class="canvas-container" id="canvas-view-container">
+                                <canvas id="nestingCanvas"></canvas>
+                                <div class="canvas-hint">
+                                    <i class="fa-solid fa-circle-info mr-1"></i> Sleep onderdelen om hun positie handmatig aan te passen. Druk op <strong>[R]</strong> om te roteren.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <p class="text-sm font-bold" id="print-date"></p>
-        </div>
-        <div id="werkbon-content" class="space-y-6"></div>
+
+            <!-- VIEW 3: Roll & Stock Inventory Panel -->
+            <div class="view-panel" id="view-inventory">
+                <div class="db-layout-grid">
+                    <!-- Left: Stock list -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Huidige Rollen & Restvoorraad</h2>
+                            <span class="text-xs text-secondary" id="total-inventory-text">0 materialen geregistreerd</span>
+                        </div>
+                        <div class="table-container">
+                            <table class="custom-table" id="table-full-inventory">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Omschrijving</th>
+                                        <th>Type</th>
+                                        <th>Breedte</th>
+                                        <th>Beschikbare Lengte</th>
+                                        <th>Kosten (€/m)</th>
+                                        <th>Herkomst</th>
+                                        <th>Actie</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-full-inventory">
+                                    <!-- Dynamic inventory -->
+                                    <tr>
+                                        <td colspan="8" class="text-center text-secondary py-8">Geen actieve voorraad rollen. Voeg hiernaast voorraad toe!</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right: Add stock form -->
+                    <div class="card">
+                        <h2 class="card-title mb-6">Voeg Materiaal Rol of Reststuk Toe</h2>
+                        
+                        <form id="form-add-stock">
+                            <div class="form-group">
+                                <label class="form-label" for="stock-desc">Material Merk/Naam/Omschrijving</label>
+                                <input type="text" class="form-control" id="stock-desc" placeholder="Bijv. Orajet 3162 PVC Glans" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="stock-type">Materiaal Type</label>
+                                <select class="form-control" id="stock-type">
+                                    <option value="Vinyl">Self-Adhesive Vinyl</option>
+                                    <option value="Banner">PVC Frontlit Zeil/Banner</option>
+                                    <option value="Canvas">Canvas / Textiel</option>
+                                    <option value="Paper">Papier / Poster</option>
+                                    <option value="Satin">Satijn textiel / Vlaggen</option>
+                                    <option value="Metal">Plaatmetaal / Overig</option>
+                                </select>
+                            </div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label" for="stock-width">Rol Breedte (mm)</label>
+                                    <input type="number" class="form-control" id="stock-width" value="1600" min="50" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="stock-length">Lengte (mm)</label>
+                                    <input type="number" class="form-control" id="stock-length" value="50000" min="100" required>
+                                </div>
+                            </div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label" for="stock-cost">Kosten per Meter (€)</label>
+                                    <input type="number" class="form-control" id="stock-cost" value="4.50" step="0.01" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="stock-origin">Inkoop Type</label>
+                                    <select class="form-control" id="stock-origin">
+                                        <option value="new">Nieuwe volledige rol</option>
+                                        <option value="offcut">Handmatig Reststuk / Scrap</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-full mt-4">
+                                <i class="fa-solid fa-circle-plus"></i>
+                                <span>Voeg toe aan Voorraad</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 4: Developer API Panel -->
+            <div class="view-panel" id="view-api-portal">
+                <div class="card mb-6">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h2 class="card-title">Commercial Developer REST API</h2>
+                            <p class="text-secondary text-sm mt-1">Automatiseer en koppel nesting direct vanuit uw eigen ERP-systeem, webshop of workflow tool.</p>
+                        </div>
+                        <div class="system-status">
+                            <div class="status-dot"></div>
+                            <span class="font-bold text-xs" style="color: var(--accent-green);">REST API Endpoint Online</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex; gap: 16px; margin-top: 24px; align-items: center;">
+                        <div>
+                            <span class="text-xs text-secondary uppercase font-bold tracking-wider">Actieve API Token</span>
+                            <div class="flex gap-2 mt-2" style="background-color: var(--bg-tertiary); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                                <code id="api-token-value" class="font-mono text-xs text-blue-400">rn_live_7b86fbac44d18ec27ba56561e1b2383c</code>
+                                <button class="btn-icon" style="background:none; border:none; cursor:pointer; color: var(--text-secondary);" id="btn-copy-token" title="Kopieer Key"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary mt-6" id="btn-generate-api-key">Genereer Nieuwe API Key</button>
+                    </div>
+                </div>
+
+                <div class="api-grid">
+                    <!-- Left: API Playground Form -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="font-bold text-md"><i class="fa-solid fa-circle-play text-blue-500 mr-2"></i> Interactieve API Playground</h3>
+                        </div>
+                        
+                        <div class="code-editor-header">
+                            <span>HTTP POST Payload (application/json)</span>
+                            <span class="text-secondary font-mono">POST /api/nest</span>
+                        </div>
+                        <textarea class="code-editor" id="api-request-payload">
+{
+  "stock": {
+    "width": 1600,
+    "maxLength": 30000,
+    "seam": 5,
+    "margins": { "top": 10, "bottom": 10, "sides": 15 }
+  },
+  "orders": [
+    { "id": "API-101", "width": 400, "length": 800, "quantity": 4, "allowRotation": true },
+    { "id": "API-102", "width": 600, "length": 1200, "quantity": 2, "allowRotation": false },
+    { "id": "API-103", "width": 800, "length": 800, "quantity": 3, "allowRotation": true }
+  ]
+}
+                        </textarea>
+                        
+                        <button class="btn btn-primary w-full mt-4" id="btn-execute-api-call">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>Verstuur API Request (POST)</span>
+                        </button>
+                    </div>
+
+                    <!-- Right: API Code Snippet and Output -->
+                    <div class="card">
+                        <div class="tabs-container" style="margin-bottom: 12px;">
+                            <div class="tab-btn active" data-api-tab="response">Live JSON Respons</div>
+                            <div class="tab-btn" data-api-tab="curl">cURL Example</div>
+                            <div class="tab-btn" data-api-tab="javascript">Javascript</div>
+                            <div class="tab-btn" data-api-tab="python">Python</div>
+                        </div>
+
+                        <div class="api-tabs-content">
+                            <!-- Tab Content: Live Response -->
+                            <div class="api-tab-pane active" id="api-pane-response">
+                                <div class="api-console-output" id="api-output-console">Druk hiernaast op "Verstuur API Request" om live output te bekijken...</div>
+                            </div>
+                            
+                            <!-- Tab Content: cURL -->
+                            <div class="api-tab-pane" id="api-pane-curl" style="display: none;">
+                                <div class="api-console-output">curl -X POST http://localhost:3000/api/nest \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer rn_live_7b86fbac44d18ec27ba56561e1b2383c" \
+  -d '{
+    "stock": { "width": 1600, "maxLength": 30000, "seam": 5 },
+    "orders": [
+      { "id": "ORD-1", "width": 500, "length": 1000, "quantity": 3, "allowRotation": true }
+    ]
+  }'</div>
+                            </div>
+
+                            <!-- Tab Content: Javascript -->
+                            <div class="api-tab-pane" id="api-pane-javascript" style="display: none;">
+                                <div class="api-console-output">const payload = {
+  stock: { width: 1600, maxLength: 30000, seam: 5 },
+  orders: [
+    { id: "ORD-1", width: 500, length: 1000, quantity: 3, allowRotation: true }
+  ]
+};
+
+fetch('http://localhost:3000/api/nest', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer rn_live_7b86fbac44d18ec27ba56561e1b2383c'
+  },
+  body: JSON.stringify(payload)
+})
+.then(res => res.json())
+.then(data => console.log('Nesting layout berekend:', data));</div>
+                            </div>
+
+                            <!-- Tab Content: Python -->
+                            <div class="api-tab-pane" id="api-pane-python" style="display: none;">
+                                <div class="api-console-output">import requests
+
+url = "http://localhost:3000/api/nest"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer rn_live_7b86fbac44d18ec27ba56561e1b2383c"
+}
+
+payload = {
+    "stock": { "width": 1600, "maxLength": 30000, "seam": 5 },
+    "orders": [
+        { "id": "ORD-1", "width": 500, "length": 1000, "quantity": 3, "allowRotation": True }
+    ]
+}
+
+response = requests.post(url, json=payload, headers=headers)
+print("Yield %:", response.json()["efficiency"])</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 5: Settings Panel -->
+            <div class="view-panel" id="view-settings">
+                <div class="card max-w-2xl mx-auto">
+                    <h2 class="card-title mb-6">Applicatie Instellingen & Database Management</h2>
+                    
+                    <h3 class="font-bold text-sm mb-4">Standaard Nesting Instellingen</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="setting-default-seam">Standaard Naad (mm)</label>
+                            <input type="number" class="form-control" id="setting-default-seam" value="4">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="setting-default-margin">Standaard Zijmarge (mm)</label>
+                            <input type="number" class="form-control" id="setting-default-margin" value="10">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="setting-currency">Valuta Symbool</label>
+                        <input type="text" class="form-control" id="setting-currency" value="€" style="width: 120px;">
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 24px 0;">
+
+                    <h3 class="font-bold text-sm mb-4 text-red-500">Gevaarlijke Zone (Database Backup & Reset)</h3>
+                    <p class="text-secondary text-xs mb-4">Alle voorraden, berekeningshistorie en instellingen worden bewaard in de lokale browserdatabase (IndexedDB).</p>
+                    
+                    <div class="flex gap-4">
+                        <button class="btn btn-secondary" id="btn-export-database">
+                            <i class="fa-solid fa-file-export"></i>
+                            <span>Exporteer JSON Backup</span>
+                        </button>
+                        <button class="btn btn-secondary" id="btn-import-database-trigger">
+                            <i class="fa-solid fa-file-import"></i>
+                            <span>Importeer Backup</span>
+                        </button>
+                        <input type="file" id="database-import-file" accept=".json" style="display: none;">
+                        <button class="btn btn-secondary text-red-500" id="btn-nuke-database" style="margin-left: auto;">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>Wis Volledige Database</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
     </div>
 
-    <div id="label-container" class="print-only"></div>
-
-    <script>
-        let rawOrders = [];
-        let computedBatches = [];
-        let labelsData = [];
-
-        function resetProject() {
-            rawOrders = []; computedBatches = []; labelsData = [];
-            document.getElementById('fileInput').value = "";
-            document.querySelector('.id-btn-calc').classList.add('hidden');
-            goToStep(1);
-        }
-
-        function goToStep(s) {
-            document.querySelectorAll('main > div').forEach(el => el.classList.add('step-hidden'));
-            document.getElementById(`step-${s}`).classList.remove('step-hidden');
-        }
-
-        // --- UPLOAD LOGICA (inclusief deadline parsing) ---
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault(); dropZone.classList.remove('drag-over');
-            if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFile({ target: fileInput }); }
-        });
-        fileInput.addEventListener('change', handleFile);
-
-        function handleFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                const data = evt.target.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
-                const rows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[workbook.SheetNames[0]]);
-                processImportData(rows);
-            };
-            reader.readAsBinaryString(file);
-        }
-
-        function convertToMM(v) {
-            if(!v) return 0;
-            let n = parseFloat(String(v).trim().replace(',', '.'));
-            return (n < 50 && n > 0) ? Math.round(n * 1000) : Math.round(n);
-        }
-
-        function parseDatum(v) {
-            if(!v) return "2099-12-31"; // Fallback far future
-            // Basic parsing voor DD-MM-YYYY of YYYY-MM-DD voor sorteer doeleinden
-            let str = String(v).trim();
-            let parts = str.split(/[-/]/);
-            if(parts.length === 3) {
-                if(parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`; // YYYY-MM-DD
-                if(parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`; // DD-MM-YYYY
-            }
-            return str;
-        }
-
-        function processImportData(rows) {
-            rawOrders = [];
-            rows.forEach((r, idx) => {
-                let l = convertToMM(r['Lengte'] || r['Afmeting 1'] || 0);
-                let b = convertToMM(r['Breedte'] || r['Afmeting 2'] || 0);
-                if (l > 0 && b > 0) {
-                    rawOrders.push({
-                        orderNr: r['Verkoopordernummer'] || r['Order'] || `ORD-${idx+1}`,
-                        omschrijving: r['Artikelomschrijving'] || r['Omschrijving'] || 'Standaard Materiaal',
-                        lengte: l, breedte: b,
-                        aantal: parseInt(r['Orderhoeveelheid'] || r['Bevestigd hoeveelheid']) || 1,
-                        deadline_raw: r['Leverdatum'] || r['Deadline'] || '-',
-                        deadline_sort: parseDatum(r['Leverdatum'] || r['Deadline'])
-                    });
-                }
-            });
-            if(rawOrders.length > 0) {
-                document.querySelector('.id-btn-calc').classList.remove('hidden');
-                dropZone.innerHTML = `<i class="fa-solid fa-file-circle-check text-5xl text-blue-500 mb-4"></i><p class="font-bold text-slate-800 text-lg mb-1">Upload Succesvol</p><p class="text-sm text-slate-500 font-bold bg-slate-100 inline-block px-3 py-1 rounded-full">${rawOrders.length} orderregels geladen</p>`;
-            } else { alert("Geen geldige data gevonden."); }
-        }
-
-        // --- ALGORITME ---
-        function berekenInkoop() {
-            let availableWidths = document.getElementById('rolBreedtesInput').value.split(',').map(w => parseInt(w.trim())).filter(w => !isNaN(w) && w > 0);
-            if (availableWidths.length === 0) return alert("Voer rolbreedtes in.");
-            
-            let offcutInput = document.getElementById('restStukkenInput').value;
-            let offcuts = [];
-            if(offcutInput) {
-                offcuts = offcutInput.split(',').map(s => {
-                    let parts = s.toLowerCase().split('x');
-                    if(parts.length === 2) return { w: parseInt(parts[0].trim()), l: parseInt(parts[1].trim()), isOffcut: true };
-                    return null;
-                }).filter(x => x && x.w > 0 && x.l > 0);
-            }
-
-            const naad = parseInt(document.getElementById('naadToeslag').value) || 0;
-            computedBatches = []; labelsData = [];
-
-            const groepen = {};
-            rawOrders.forEach(o => { 
-                if(!groepen[o.omschrijving]) groepen[o.omschrijving] = []; 
-                groepen[o.omschrijving].push(o); 
-            });
-
-            let remainingOffcuts = [...offcuts];
-            let totalAreaGlobal = 0;
-            let totalRolAreaGlobal = 0;
-
-            Object.entries(groepen).forEach(([artikel, ords]) => {
-                let unpackedOrders = [...ords];
-                
-                // Vind vroegste deadline in deze groep
-                let earliestDeadlineRaw = ords.reduce((min, p) => p.deadline_sort < min.deadline_sort ? p : min, ords[0]).deadline_raw;
-                let earliestDeadlineSort = ords.reduce((min, p) => p.deadline_sort < min.deadline_sort ? p : min, ords[0]).deadline_sort;
-
-                // STAP A: Reststukken
-                if (remainingOffcuts.length > 0) {
-                    for(let i = remainingOffcuts.length - 1; i >= 0; i--) {
-                        let oc = remainingOffcuts[i];
-                        let result = packOrdersWithConstraint(unpackedOrders, oc.w, oc.l, naad);
-                        if(result.packed.length > 0) {
-                            result.isOffcut = true;
-                            result.artikel = artikel;
-                            result.deadline_raw = earliestDeadlineRaw; result.deadline_sort = earliestDeadlineSort;
-                            computedBatches.push(result);
-                            unpackedOrders = result.remainingOrders;
-                            remainingOffcuts.splice(i, 1);
-                        }
-                    }
-                }
-
-                // STAP B: Nieuwe Rollen
-                if (unpackedOrders.length > 0) {
-                    let bestResult = null;
-                    availableWidths.forEach(testBreedte => {
-                        let result = packOrdersWithConstraint(unpackedOrders, testBreedte, 9999999, naad);
-                        if (!bestResult || result.efficiency > bestResult.efficiency) bestResult = result;
-                    });
-                    bestResult.artikel = artikel;
-                    bestResult.deadline_raw = earliestDeadlineRaw; bestResult.deadline_sort = earliestDeadlineSort;
-                    computedBatches.push(bestResult);
-                }
-            });
-
-            // Update Labels & Globale Efficiëntie
-            computedBatches.forEach(res => {
-                res.packed.forEach(p => { labelsData.push({ orderNr: p.id, desc: res.artikel, afm: `${p.w_orig}x${p.l_orig}mm` }); });
-                totalAreaGlobal += res.totalAreaPacked;
-                totalRolAreaGlobal += (res.rolBreedte * res.lengte);
-            });
-
-            let globEff = totalRolAreaGlobal > 0 ? Math.round((totalAreaGlobal / totalRolAreaGlobal) * 100) : 0;
-            document.getElementById('global-efficiency').innerText = globEff + "%";
-            
-            // Pas de vulkleur van het blaadje aan o.b.v score
-            let fillEl = document.getElementById('global-eff-fill');
-            fillEl.style.height = globEff + "%";
-            fillEl.className = `absolute bottom-0 w-full transition-all duration-1000 ${globEff < 70 ? 'bg-red-500' : (globEff < 85 ? 'bg-amber-400' : 'bg-green-500')}`;
-
-            document.getElementById('batch-count').innerText = `${computedBatches.length} Batches berekend`;
-
-            // Standaard Sorteren op "Aanbevolen" en renderen
-            sorteerBatches('aanbevolen');
-            goToStep(3);
-        }
-
-        function packOrdersWithConstraint(orders, rolBreedte, maxLengte, naad) {
-            let itemsToPack = [];
-            orders.forEach(o => {
-                for(let i=0; i < o.aantal; i++) { itemsToPack.push({ id: o.orderNr, w: o.breedte + naad, l: o.lengte + naad, w_orig: o.breedte, l_orig: o.lengte }); }
-            });
-            itemsToPack.sort((a,b) => Math.max(b.w, b.l) - Math.max(a.w, a.l));
-
-            let shelves = []; let packedItems = []; let remainingItems = []; let totalAreaPacked = 0;
-
-            itemsToPack.forEach(item => {
-                let pw = item.w, pl = item.l;
-                if (Math.max(item.w, item.l) <= rolBreedte) { if (item.l > item.w) { pw = item.w; pl = item.l; } else { pw = item.l; pl = item.w; } } 
-                else if (item.w <= rolBreedte) { pw = item.w; pl = item.l; } else if (item.l <= rolBreedte) { pw = item.l; pl = item.w; } else { pw = item.w; pl = item.l; }
-
-                let placed = false;
-                for(let s of shelves) {
-                    if (s.usedWidth + pw <= rolBreedte) {
-                        packedItems.push({ x: s.usedWidth, y: s.startY, w: pw, l: pl, id: item.id, w_orig: item.w_orig, l_orig: item.l_orig });
-                        s.usedWidth += pw; s.height = Math.max(s.height, pl); totalAreaPacked += (item.w_orig * item.l_orig); placed = true; break;
-                    }
-                }
-                if (!placed) {
-                    let startY = shelves.reduce((sum, s) => sum + s.height, 0);
-                    if (startY + pl <= maxLengte) {
-                        packedItems.push({ x: 0, y: startY, w: pw, l: pl, id: item.id, w_orig: item.w_orig, l_orig: item.l_orig });
-                        shelves.push({ startY: startY, height: pl, usedWidth: pw }); totalAreaPacked += (item.w_orig * item.l_orig);
-                    } else { remainingItems.push(item); }
-                }
-            });
-
-            let remGroups = {};
-            remainingItems.forEach(i => {
-                if(!remGroups[i.id]) remGroups[i.id] = { orderNr: i.id, breedte: i.w_orig, lengte: i.l_orig, aantal: 0 }; remGroups[i.id].aantal++;
-            });
-
-            let benodigdeLengte = shelves.reduce((sum, s) => sum + s.height, 0);
-            let efficiency = benodigdeLengte > 0 ? (totalAreaPacked / (rolBreedte * benodigdeLengte)) * 100 : 0;
-
-            return { 
-                rolBreedte: rolBreedte, lengte: benodigdeLengte, maxLengte: maxLengte,
-                efficiency: parseFloat(Math.min(efficiency, 100).toFixed(1)),
-                totalAreaPacked: totalAreaPacked, packed: packedItems, remainingOrders: Object.values(remGroups), stuks: packedItems.length
-            };
-        }
-
-        // --- SORTEREN & RENDEREN ---
-        function sorteerBatches(criteria) {
-            // Update UI knoppen
-            document.querySelectorAll('.sort-btn').forEach(b => {
-                b.classList.remove('bg-slate-100', 'text-slate-800');
-                b.classList.add('text-slate-500');
-            });
-            document.getElementById(`btn-sort-${criteria}`).classList.remove('text-slate-500');
-            document.getElementById(`btn-sort-${criteria}`).classList.add('bg-slate-100', 'text-slate-800');
-
-            // Sorteer logica
-            let sorted = [...computedBatches];
-            if (criteria === 'aanbevolen') {
-                // Reststukken eerst, daarna op efficiëntie
-                sorted.sort((a,b) => (b.isOffcut === a.isOffcut) ? b.efficiency - a.efficiency : (a.isOffcut ? -1 : 1));
-            } else if (criteria === 'efficiency') {
-                // Puur op efficiëntie
-                sorted.sort((a,b) => b.efficiency - a.efficiency);
-            } else if (criteria === 'deadline') {
-                // Vroegste deadline bovenaan
-                sorted.sort((a,b) => a.deadline_sort.localeCompare(b.deadline_sort));
-            }
-
-            // Render
-            const container = document.getElementById('batchResultaten');
-            container.innerHTML = '';
-            sorted.forEach(renderBatchCard);
-        }
-
-        function renderBatchCard(data) {
-            let colorScale = data.efficiency < 70 ? 'bg-red-500' : (data.efficiency < 85 ? 'bg-amber-400' : 'bg-green-500');
-            let m = (data.lengte / 1000).toFixed(2);
-            let pixelsPerMM = 140 / data.rolBreedte;
-            let visualWidth = (data.isOffcut ? data.maxLengte : data.lengte) * pixelsPerMM;
-            
-            let badge = data.isOffcut ? `<span class="bg-yellow-100 text-yellow-700 border border-yellow-300 text-[10px] px-2 py-0.5 rounded-full ml-2 uppercase font-black tracking-wide shadow-sm"><i class="fa-solid fa-recycle mr-1"></i> Reststuk Inzet</span>` : '';
-            let bgCard = data.isOffcut ? 'bg-yellow-50/30' : 'bg-white';
-
-            let html = `
-                <div class="${bgCard} border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden break-inside-avoid flex flex-col">
-                    
-                    <div class="p-5 border-b border-slate-100 flex justify-between items-start">
-                        <div class="pr-4">
-                            <h3 class="font-bold text-slate-800 text-lg leading-tight">${data.artikel} ${badge}</h3>
-                            <div class="flex gap-3 mt-2 text-xs font-medium text-slate-500">
-                                <span><i class="fa-solid fa-layer-group text-slate-400 mr-1"></i> ${data.stuks} stuks</span>
-                                <span class="${data.deadline_raw !== '-' ? 'text-blue-600' : ''}"><i class="fa-regular fa-calendar text-slate-400 mr-1"></i> ${data.deadline_raw}</span>
-                            </div>
-                        </div>
-                        <div class="text-right flex-shrink-0">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${data.isOffcut ? 'Breedte Reststuk' : 'Inkoop Rolbreedte'}</p>
-                            <span class="text-2xl font-black text-slate-800">${data.rolBreedte}<span class="text-sm text-slate-500 font-bold ml-1">mm</span></span>
-                        </div>
-                    </div>
-                    
-                    <div class="p-5 bg-slate-50/50 flex items-center justify-between gap-6 border-b border-slate-100">
-                        <div class="w-1/3">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Materiaal Nodig</p>
-                            <span class="text-3xl font-black text-blue-600">${m}<span class="text-lg">m</span></span>
-                        </div>
-                        <div class="w-2/3">
-                            <div class="flex justify-between items-end mb-1">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Benutting / Efficiëntie</span>
-                                <span class="text-lg font-black text-slate-700">${data.efficiency}%</span>
-                            </div>
-                            <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden shadow-inner">
-                                <div class="${colorScale} h-full transition-all" style="width: ${data.efficiency}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="p-5 flex-grow">
-                        <div class="nesting-container">
-                            <div class="nesting-roll ${data.isOffcut ? 'offcut-roll' : ''}" style="width: ${visualWidth}px;">
-                                ${data.packed.map(p => {
-                                    return `<div class="nesting-piece rounded-[1px]" style="left:${p.y * pixelsPerMM}px; top:${p.x * pixelsPerMM}px; width:${p.l * pixelsPerMM}px; height:${p.w * pixelsPerMM}px;" title="${p.id} (${p.w_orig}x${p.l_orig})">${p.id}</div>`;
-                                }).join('')}
-                            </div>
-                        </div>
-                    </div>
+    <!-- Hidden Layout: Print Werkbon -->
+    <div id="print-werkbon-panel" class="view-panel">
+        <div class="print-sheet">
+            <div style="display:flex; justify-content:space-between; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 20px;">
+                <div>
+                    <h1 style="font-size: 28px; font-weight:800; text-transform:uppercase; margin:0;">RollNest Pro</h1>
+                    <span style="font-size: 14px; font-weight:bold; color: #555;">Productie Werkbon - Batch Advies</span>
                 </div>
-            `;
-            document.getElementById('batchResultaten').innerHTML += html;
-        }
+                <div style="text-align:right;">
+                    <div style="font-size:18px; font-weight:bold;" id="print-batch-id">BATCH-#00000</div>
+                    <span style="font-size:12px;" id="print-timestamp">19-05-2026 22:20</span>
+                </div>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 20px; font-size:14px;">
+                <div>
+                    <h3 style="border-bottom:1px solid #ddd; padding-bottom:4px; margin-bottom:10px;">Inzet Parameters</h3>
+                    <div><strong>Materiaal:</strong> <span id="print-artikel-desc">-</span></div>
+                    <div><strong>Breedte:</strong> <span id="print-artikel-width">0 mm</span></div>
+                    <div><strong>Gebruikt Materiaal:</strong> <span id="print-req-len">0.00 m</span></div>
+                    <div><strong>Nesting Efficiëntie:</strong> <span id="print-eff-score">0%</span></div>
+                </div>
+                <div>
+                    <h3 style="border-bottom:1px solid #ddd; padding-bottom:4px; margin-bottom:10px;">Snij-instructies</h3>
+                    <div><strong>Kerf / Tussenruimte:</strong> <span id="print-kerf">0 mm</span></div>
+                    <div><strong>Marge Zijkant:</strong> <span id="print-marge-sides">0 mm</span></div>
+                    <div><strong>Aantal Items in Batch:</strong> <span id="print-items-count">0 stuks</span></div>
+                </div>
+            </div>
 
-        // --- EXPORTS ---
-        function exporteerCSV() {
-            let csv = "data:text/csv;charset=utf-8,Omschrijving;Deadline;Type;Rolbreedte_MM;Benodigde_Meters;Snij_Benutting;Aantal_Stuks\n" + 
-                      computedBatches.map(b => `${b.artikel.replace(/;/g, ',')};${b.deadline_raw};${b.isOffcut ? 'Restvoorraad' : 'Nieuw'};${b.rolBreedte};${(b.lengte/1000).toFixed(2)};${b.efficiency}%;${b.stuks}`).join("\n");
-            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csv)); link.setAttribute("download", "Productie_Advies.csv");
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        }
-        function printWerkbon() {
-            let d = new Date(); document.getElementById('print-date').innerText = "Geprint op: " + d.toLocaleString('nl-NL');
-            document.getElementById('werkbon-content').innerHTML = document.getElementById('batchResultaten').innerHTML;
-            document.body.classList.add('print-werkbon'); window.print(); setTimeout(() => { document.body.classList.remove('print-werkbon'); }, 500);
-        }
-        function printLabels() {
-            const container = document.getElementById('label-container'); container.innerHTML = '';
-            labelsData.forEach((label, i) => {
-                let div = document.createElement('div'); div.className = 'label-item flex flex-col justify-center items-center text-center';
-                div.innerHTML = `<div class="font-bold text-xs uppercase text-slate-500 mb-2 truncate w-full">${label.desc}</div><svg id="barcode-${i}"></svg><div class="font-black text-xl mt-2">${label.afm}</div>`;
-                container.appendChild(div); JsBarcode(`#barcode-${i}`, label.orderNr, { format: "CODE128", width: 2, height: 40, displayValue: true, fontSize: 14 });
-            });
-            document.body.classList.add('print-labels'); window.print(); setTimeout(() => { document.body.classList.remove('print-labels'); }, 500);
-        }
-    </script>
+            <h3 style="border-bottom:1px solid #ddd; padding-bottom:4px; margin-bottom:15px;">Visueel Nesting Schema</h3>
+            <div style="border:1px solid #000; padding:15px; margin-bottom: 30px; text-align:center;">
+                <!-- SVG schema will be written here dynamically -->
+                <div id="print-visual-svg-container"></div>
+            </div>
+
+            <h3 style="border-bottom:1px solid #ddd; padding-bottom:4px; margin-bottom:15px;">Inbegrepen Orders & Afmetingen</h3>
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:12px;">
+                <thead>
+                    <tr style="border-bottom: 1.5px solid #000;">
+                        <th style="padding: 8px;">Order NR</th>
+                        <th style="padding: 8px;">Nested Breedte (mm)</th>
+                        <th style="padding: 8px;">Nested Lengte (mm)</th>
+                        <th style="padding: 8px;">Origineel W x L (mm)</th>
+                        <th style="padding: 8px;">Rotatie status</th>
+                    </tr>
+                </thead>
+                <tbody id="print-orders-tbody">
+                    <!-- Dynamic print table rows -->
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 50px; text-align:right; font-size:12px; color:#555;">
+                Getekend voor akkoord door operator: __________________________
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Layout: Print Labels -->
+    <div id="print-labels-panel" class="view-panel">
+        <div id="label-print-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+            <!-- Individual labels rendered dynamically -->
+        </div>
+    </div>
+
+    <!-- Script Imports -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="app.js"></script>
+    <script src="api-playground.js"></script>
 </body>
 </html>
