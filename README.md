@@ -12,7 +12,7 @@ Live demo: (link volgt)
 - **Normen:** het verbruik per maatklasse en het maandverbruik per stof, afgeleid uit de historie.
 - **Snijplannen en werkbon:** per rol een tekening van de indeling, en een werkbon per stof voor de snijafdeling.
 
-Let op: met de realistische voorbeelddata koopt de vuistregel van 15% ongeveer 5% te weinig in, omdat het echte verlies rond de 22% ligt. Dat is een voorbeeld, geen belofte. Het resultaat hangt af van je eigen ordermix: maten, stoffen en of een stof gedraaid mag worden.
+Let op: met de realistische voorbeelddata koopt de vuistregel van 15% per saldo ongeveer 4% te weinig in, omdat het echte snijverlies rond de 19% ligt. Per stof loopt dat uiteen van 8% bij Verduisterend Grijs (mag vrij draaien; daar koopt de vuistregel juist te veel) tot 26% bij Screen 5% Antraciet. Dat is een voorbeeld, geen belofte. Het resultaat hangt af van je eigen ordermix: maten, stoffen, of een stof gedraaid mag worden en of een product uit banen mag bestaan (zonneschermdoek wel, screens en rolgordijnen niet).
 
 ## Lokaal draaien
 
@@ -37,15 +37,15 @@ Plak regels in het orders-scherm of kies een bestand. Het scheidingsteken (`;`, 
 
 | Kolom | Aliassen |
 |---|---|
-| ordernr | order, ordernummer |
-| datum | date |
-| product | producttype, type |
-| stof | artikel, doek |
-| breedte | b, width |
-| hoogte | h, lengte, height |
-| aantal | qty, stuks |
+| ordernr | order, ordernummer, ordernr., order nr, order nummer, orderno, order_nr |
+| datum | date, orderdatum |
+| product | type, producttype, soort |
+| stof | artikel, doek, fabric, stofcode, artikelnr |
+| breedte | b, width, br |
+| hoogte | h, height, val, lengte, hg |
+| aantal | qty, quantity, stuks, n, aant |
 
-Kolomnamen zijn niet hoofdlettergevoelig. Ontbreekt `aantal`, dan geldt 1. Ontbreekt `datum`, dan geldt vandaag. Foute regels worden niet geïmporteerd maar wel getoond.
+Kolomnamen zijn niet hoofdlettergevoelig. Ontbreekt `aantal`, dan geldt 1. Ontbreekt `datum`, dan geldt vandaag; bij een import in de historie is de datum verplicht. Datums mogen als `2026-11-02`, `2-11-2026`, `02/11/2026` of `02.11.2026`; ze worden opgeslagen als JJJJ-MM-DD. Foute regels worden niet geïmporteerd maar wel getoond.
 
 ```
 ordernr;datum;product;stof;breedte;hoogte;aantal

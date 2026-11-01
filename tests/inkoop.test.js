@@ -72,3 +72,18 @@ test('geen orders', () => {
   assert.equal(r.gevoelM1, 0);
   assert.equal(r.teBestellenRollen, 0);
 });
+
+test('F5: uit voorraad m1 en rollen voor open orders zijn na te rekenen', () => {
+  const bakken = [bak('s1', 'reststuk', 400, 380), bak('r1', 'rol', 3000, 3000), bak('nieuw-1', 'nieuw', 3000, 1000)];
+  const perBak = [
+    { bakId: 's1', brutoLengte: 400 }, { bakId: 'r1', brutoLengte: 3000 }, { bakId: 'nieuw-1', brutoLengte: 1000 },
+  ];
+  const verbruik = { ...verb(44, 100), perBak };
+  const r = berekenInkoop({ ...basis(), nest: nest(bakken, 1), verbruik });
+  near(r.uitVoorraadM1, 34);
+  near(r.uitNieuwM1, 10);
+  near(r.uitVoorraadM1 + r.uitNieuwM1, r.hardBrutoM1);
+  assert.equal(r.nieuweRollenHard, 1);
+  // Voorraad over = rest op voorraadrollen + rest op de nieuwe rollen die je koopt.
+  near(r.restVoorraadM1, 20);
+});

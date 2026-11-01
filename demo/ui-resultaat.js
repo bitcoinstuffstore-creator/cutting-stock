@@ -125,6 +125,8 @@ function inkoopScherm(r, sc) {
   const rijen = regels.map(({ stof, inkoop: i }) => `<tr>
       <td class="tekst">${esc(stof.naam)} <span class="bron-tag">${esc(stof.code)}</span></td>
       <td class="waarde">${getal(i.hardBrutoM1)}</td>
+      <td class="waarde">${getal(i.uitVoorraadM1)}</td>
+      <td class="waarde">${getal(i.nieuweRollenHard, 0)}</td>
       <td class="waarde">${getal(i.verwachtM1)}</td>
       <td class="waarde">${getal(i.restVoorraadM1)}</td>
       <td class="waarde">${getal(i.teBestellenRollen, 0)}</td>
@@ -137,6 +139,8 @@ function inkoopScherm(r, sc) {
   const som = (f) => regels.reduce((s, x) => s + f(x.inkoop), 0);
   const voet = `<tr><td class="tekst">Totaal</td>
       <td class="waarde">${getal(som((i) => i.hardBrutoM1))}</td>
+      <td class="waarde">${getal(som((i) => i.uitVoorraadM1))}</td>
+      <td class="waarde">${getal(som((i) => i.nieuweRollenHard), 0)}</td>
       <td class="waarde">${getal(som((i) => i.verwachtM1))}</td>
       <td class="waarde">${getal(som((i) => i.restVoorraadM1))}</td>
       <td class="waarde">${getal(som((i) => i.teBestellenRollen), 0)}</td>
@@ -145,7 +149,7 @@ function inkoopScherm(r, sc) {
       <td class="waarde">${getal(som((i) => i.gevoelM1))}</td>
       ${verschilCel(r.totalen.verschilEuro)}
       <td></td></tr>`;
-  const koppen = ['Stof', ['Harde behoefte m¹', 'num'], ['Verwacht m¹', 'num'], ['Voorraad over m¹', 'num'],
+  const koppen = ['Stof', ['Harde behoefte m¹', 'num'], ['Uit voorraad m¹', 'num'], ['Rollen voor open orders', 'num'], ['Verwacht m¹', 'num'], ['Voorraad over m¹', 'num'],
     ['Te bestellen rollen', 'num'], ['Te bestellen m¹', 'num'], ['Kosten', 'num'], ['Vuistregel m¹', 'num'],
     ['Verschil vuistregel', 'num'], 'Vuistregel ↔ berekend'];
 
@@ -155,7 +159,8 @@ function inkoopScherm(r, sc) {
         <button type="button" class="knop knop-klein geen-print" id="btn-export-inkoop-csv" aria-expanded="${ui.export === 'inkoop'}">Exporteren als CSV</button>
       </div>
       <p class="uitleg">Zoveel stof bestel je ${h === 0 ? 'voor de open orders' : `voor de open orders en ${h} ${h === 1 ? 'maand' : 'maanden'} verwacht verbruik`}.
-        De harde behoefte komt uit het snijplan; het verwachte verbruik uit je historie. Wat er na het snijden op je voorraadrollen overblijft, gaat eerst van het verwachte verbruik af.</p>
+        De harde behoefte komt uit het snijplan: eerst uit je voorraad (reststukken en voorraadrollen), de rest uit nieuwe rollen. Het verwachte verbruik komt uit je historie.
+        Voorraad over is wat er na het snijden over blijft op je voorraadrollen én op de nieuwe rollen die je koopt; dat gaat eerst van het verwachte verbruik af.</p>
       ${ui.export === 'inkoop' ? exportPaneelHTML({ id: 'export-inkoop', titel: 'Inkoopadvies als CSV', uitleg: 'Puntkomma-gescheiden, met komma als decimaalteken. Plak het in Excel of sla het op als inkoopadvies.csv.', tekst: inkoopCSV(r) }) : ''}
       <p class="legenda" aria-hidden="true"><span class="legenda-item"><span class="staal staal-berekend"></span>berekend uit het snijplan</span>
         <span class="legenda-item"><span class="staal staal-gevoel"></span>vuistregel (netto doek + toeslag, of je eigen inschatting)</span></p>
@@ -284,7 +289,7 @@ function normenScherm(r, sc) {
 
   return `<section class="paneel" aria-labelledby="titel-normen">
       <div class="paneel-kop"><h2 id="titel-normen">Verbruiksnormen</h2></div>
-      <p class="uitleg">Gemiddeld stofverbruik per doek uit je historie, per stof, product en breedteklasse. De verliesfactor is bruto stof gedeeld door netto doek.</p>
+      <p class="uitleg">Gemiddeld stofverbruik per doek uit je historie, per stof, product en breedteklasse. De verliesfactor is bruto stof gedeeld door netto doek: 1,18 betekent 18% snijverlies.</p>
       ${groepen.length ? tabel({ id: 'tabel-normen', koppen, rijen, klasse: 'normen' }) : '<div class="leeg-staat">Nog geen historie — importeer je orders van vorig jaar bij Orders → Historie.</div>'}
     </section>
     <section class="paneel" aria-labelledby="titel-maandverbruik">
@@ -318,7 +323,7 @@ function snijplannenScherm(r, sc) {
   const t = verbruik.totaal;
   const samenvatting = `<dl class="kerngetallen">
       <div><dt>Rolbreedte</dt><dd>${getal(stof.rolbreedte, 0)} cm</dd></div>
-      <div><dt>Bakken</dt><dd>${getal(bakken.length, 0)}</dd></div>
+      <div><dt>Rollen en reststukken</dt><dd>${getal(bakken.length, 0)}</dd></div>
       <div><dt>Nieuwe rollen</dt><dd>${getal(snijplan.nieuweRollen, 0)}</dd></div>
       <div><dt>Bruto</dt><dd>${getal(t.brutoM1)} m¹</dd></div>
       <div><dt>Snijverlies</dt><dd>${pct((t.verliesfactor - 1) * 100)}</dd></div>
@@ -345,10 +350,11 @@ function snijplannenScherm(r, sc) {
 }
 
 function bakKop(b, info) {
-  const verlies = info && info.brutoM2 > 0 ? (info.verliesM2 / info.brutoM2) * 100 : 0;
+  // Snijverlies overal als bruto / netto − 1 (extra stof bovenop het netto doek), net als de kerngetallen.
+  const verlies = info && info.nettoM2 > 0 ? (info.brutoM2 / info.nettoM2 - 1) * 100 : 0;
   return `<div class="bak-kop">
       <h3><span class="soort-tag" data-soort="${esc(b.soort)}">${SOORT[b.soort] ?? esc(b.soort)}</span> ${esc(b.id)}</h3>
-      <p class="bak-meta"><span>${maat(b.breedte, b.lengte)} cm</span><span>gebruikt ${getal((info?.brutoLengte ?? b.gebruikteLengte) / 100)} m¹</span><span>verlies ${pct(verlies)}</span>${info?.restIsVerlies ? `<span>rest ${getal(info.restLengte, 0)} cm telt als verlies</span>` : ''}</p>
+      <p class="bak-meta"><span>${maat(b.breedte, b.lengte)} cm</span><span>gebruikt ${getal((info?.brutoLengte ?? b.gebruikteLengte) / 100)} m¹</span><span>snijverlies ${pct(verlies)}</span>${info?.restIsVerlies ? `<span>rest ${getal(info.restLengte, 0)} cm telt als verlies</span>` : ''}</p>
     </div>`;
 }
 

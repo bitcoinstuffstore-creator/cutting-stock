@@ -27,6 +27,9 @@ test('consistent', () => {
   for (const st of s.stoffen) {
     const p = r.perStof[st.code];
     assert.equal(p.inkoop.teBestellenM1, p.inkoop.teBestellenRollen * st.rollengte);
+    assert.ok(Math.abs(p.inkoop.uitVoorraadM1 + p.inkoop.uitNieuwM1 - p.inkoop.hardBrutoM1) < 1e-9, st.code);
+    const m1 = r.doeken.filter((d) => d.stof === st.code).reduce((a, d) => a + d.m1, 0);
+    assert.ok(Math.abs(m1 - p.inkoop.hardBrutoM1) < 1e-6, `${st.code} m1`);
     const som = r.doeken.filter((d) => d.stof === st.code).reduce((a, d) => a + d.brutoM2, 0);
     assert.ok(Math.abs(som - p.verbruik.totaal.brutoM2) < 1e-6, `${st.code}: ${som} vs ${p.verbruik.totaal.brutoM2}`);
   }

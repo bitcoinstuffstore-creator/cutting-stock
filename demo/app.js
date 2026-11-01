@@ -8,6 +8,7 @@ import { exportPaneelHTML, kopieer } from './export-paneel.js';
 import { renderOrders, verlaatOrders } from './ui-orders.js';
 import { renderStoffen } from './ui-stoffen.js';
 import { renderResultaat, verlaatResultaat } from './ui-resultaat.js';
+import { verschilKop } from './resultaat-rijen.js';
 
 const TABS = ['orders', 'stoffen', 'resultaat'];
 const NOOP_OPSLAG = { getItem: () => null, setItem() {} };
@@ -162,22 +163,31 @@ function renderKop() {
   }
   const t = state.resultaat.totalen;
   const h = Number(state.scenario.instellingen.horizonMaanden) || 0;
-  kosten.textContent = euro(t.kosten);
+  kosten.textContent = Number.isFinite(t.kosten) ? euro(t.kosten) : '–';
   kostenSub.textContent = h === 0
     ? 'alleen de open orders'
     : `open orders + ${h} ${h === 1 ? 'maand' : 'maanden'} verwacht verbruik`;
 
-  const pct = Math.abs(t.verschilPct);
-  const soort = pct < 0.5 ? 'gelijk' : t.verschilEuro > 0 ? 'te-veel' : 'te-weinig';
-  const tekst = { gelijk: 'gelijk aan berekend', 'te-veel': 'te veel met vuistregel', 'te-weinig': 'te weinig met vuistregel' }[soort];
-  verschil.innerHTML = `${esc(euro(Math.abs(t.verschilEuro)))} <span class="kpi-tag" data-soort="${soort}">${esc(getal(pct, 1))}% ${esc(tekst)}</span>`;
-  verschilSub.textContent = soort === 'te-weinig'
-    ? 'met de vuistregel kom je stof tekort voor de open orders'
-    : soort === 'te-veel'
-      ? 'met de vuistregel koop je meer dan de open orders nodig hebben'
-      : 'de vuistregel komt overeen met het snijplan';
+  // Zelfde drempel als de inkooptabel (minder dan € 0,50 = gelijk). Niets te vergelijken: geen richting.
+  const kop = verschilKop(t, state.resultaat.perStof);
+  if (!kop) {
+    verschil.textContent = '–';
+    verschilSub.textContent = 'nog geen stof berekend voor de open orders';
+  } else {
+    const tekst = { gelijk: 'gelijk aan berekend', 'te-veel': 'te veel met vuistregel', 'te-weinig': 'te weinig met vuistregel' }[kop.soort];
+    verschil.innerHTML = `${esc(euro(kop.euro))} <span class="kpi-tag" data-soort="${kop.soort}">${esc(getal(kop.pct, 1))}% ${esc(tekst)}</span>`;
+    const basis = kop.soort === 'te-weinig'
+      ? 'met de vuistregel kom je stof tekort voor de open orders'
+      : kop.soort === 'te-veel'
+        ? 'met de vuistregel koop je meer dan de open orders nodig hebben'
+        : 'de vuistregel komt overeen met het snijplan';
+    const stoffen = (n) => `${getal(n, 0)} ${n === 1 ? 'stof' : 'stoffen'}`;
+    verschilSub.textContent = kop.split
+      ? `${basis} (saldo): te veel ${euro(kop.split.teVeel.euro)} bij ${stoffen(kop.split.teVeel.n)}, te weinig ${euro(kop.split.teWeinig.euro)} bij ${stoffen(kop.split.teWeinig.n)}`
+      : basis;
+  }
 
-  verlies.textContent = `${getal((t.verliesfactor - 1) * 100, 1)}%`;
+  verlies.textContent = Number.isFinite(t.verliesfactor) ? `${getal((t.verliesfactor - 1) * 100, 1)}%` : '–';
 }
 
 // ---------- Tabs ----------

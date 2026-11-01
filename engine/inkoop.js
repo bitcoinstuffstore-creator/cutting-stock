@@ -12,6 +12,17 @@ export function berekenInkoop({ stof, nest, verbruik, verwachtPerMaand, gevoelM1
   }
   const restVoorraadM1 = restCm / 100;
 
+  // Bruto m1 per herkomst: uit voorraad (voorraadrollen + reststukken) of uit nieuwe rollen.
+  const soortVan = new Map(nest.bakken.map((b) => [b.id, b.soort]));
+  let voorraadCm = 0;
+  let nieuwCm = 0;
+  for (const pb of verbruik.perBak || []) {
+    if (soortVan.get(pb.bakId) === 'nieuw') nieuwCm += pb.brutoLengte;
+    else voorraadCm += pb.brutoLengte;
+  }
+  const uitVoorraadM1 = voorraadCm / 100;
+  const uitNieuwM1 = nieuwCm / 100;
+
   const verwachtM1 = (verwachtPerMaand || 0) * (instellingen.horizonMaanden || 0);
   const extraM1 = Math.max(0, verwachtM1 - restVoorraadM1);
   const teBestellenRollen = nieuweRollenHard + Math.ceil(extraM1 / stof.rollengte - 1e-9);
@@ -25,7 +36,7 @@ export function berekenInkoop({ stof, nest, verbruik, verwachtPerMaand, gevoelM1
   const verschilM1 = gevoel - hardBrutoM1;
 
   return {
-    stof: stof.code, hardBrutoM1, nieuweRollenHard, restVoorraadM1, verwachtM1, extraM1,
+    stof: stof.code, hardBrutoM1, uitVoorraadM1, uitNieuwM1, nieuweRollenHard, restVoorraadM1, verwachtM1, extraM1,
     teBestellenRollen, teBestellenM1, kosten,
     gevoelM1: gevoel, gevoelBron: eigen ? 'eigen' : 'toeslag',
     verschilM1, verschilEuro: verschilM1 * stof.prijsPerM1,
