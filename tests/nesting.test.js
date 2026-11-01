@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { nestStof, nestMetStrategie, STRATEGIEEN } from '../engine/nesting.js';
 import { EPS } from '../engine/packers.js';
+import { mulberry32 } from '../engine/random.js';
 
 const R = { code: 'R', rolbreedte: 320, rollengte: 30, draaienToegestaan: true };
 const T = { code: 'T', rolbreedte: 120, rollengte: 40, draaienToegestaan: false };
@@ -65,11 +66,21 @@ test('onplaatsbaar', () => {
 });
 
 test('geen draaien', () => {
-  const s = stuk(110, 200, false, { stof: 'T' });
-  const res = nestStof([s, stuk(110, 200, false, { stof: 'T' })], T, [], inst);
-  const pl = res.bakken.flatMap((b) => b.plaatsingen);
-  assert.equal(pl.length, 2);
-  assert.ok(pl.every((p) => p.gedraaid === false && p.w === 110 && p.h === 200));
+  // Reststuk 105 breed: 110x100 past daar alleen gedraaid (100x110).
+  const voorraad = [vi('rs', 'reststuk', 105, 500, 'T')];
+  const vast = nestStof([stuk(110, 100, false, { stof: 'T' })], T, voorraad, inst);
+  const plV = vast.bakken.flatMap((b) => b.plaatsingen);
+  assert.equal(plV.length, 1);
+  assert.equal(plV[0].gedraaid, false);
+  assert.equal(vast.bakken.find((b) => b.id === 'rs').plaatsingen.length, 0);
+  assert.equal(vast.nieuweRollen, 1);
+  // Controle: met magDraaien true wordt wel gedraaid in het reststuk.
+  const vrij = nestStof([stuk(110, 100, true, { stof: 'T' })], T, voorraad, inst);
+  const rs = vrij.bakken.find((b) => b.id === 'rs');
+  assert.equal(rs.plaatsingen.length, 1);
+  assert.equal(rs.plaatsingen[0].gedraaid, true);
+  assert.equal(rs.plaatsingen[0].w, 100);
+  assert.equal(rs.plaatsingen[0].h, 110);
 });
 
 test('speling', () => {
@@ -78,7 +89,7 @@ test('speling', () => {
   const ys = met.bakken[0].plaatsingen.map((p) => p.y);
   assert.notEqual(ys[0], ys[1]);
   assert.ok(met.bakken[0].plaatsingen.every((p) => p.w === 159 && p.h === 100));
-  assert.equal(met.bakken[0].gebruikteLengte, met.bakken[0].plaatsingen.reduce((m, p) => Math.max(m, p.y + p.h), 0));
+  assert.equal(met.bakken[0].gebruikteLengte, 202);
   const zonder = nestStof(mk(), R, [], { snijspeling: 0 });
   assert.deepEqual(zonder.bakken[0].plaatsingen.map((p) => p.y), [0, 0]);
 });
@@ -102,20 +113,9 @@ test('kiest beste', () => {
   }
 });
 
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 test('invarianten', () => {
   for (let seed = 1; seed <= 20; seed++) {
-    const r = rng(seed);
+    const r = mulberry32(seed);
     const n = 30 + Math.floor(r() * 51);
     const stukken = Array.from({ length: n }, () => {
       const w = 20 + Math.floor(r() * 280);
