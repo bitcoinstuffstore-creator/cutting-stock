@@ -58,6 +58,7 @@ test('voorraad', () => {
     const n = s.voorraad.filter((v) => v.stof === c && v.soort === 'rol').length;
     assert.ok(n >= 0 && n <= 2);
   }
+  assert.ok(s.voorraad.some((v) => v.soort === 'rol' && v.lengte < s.stoffen.find((x) => x.code === v.stof).rollengte * 100));
   for (const v of s.voorraad) {
     assert.ok(codes.has(v.stof));
     const st = s.stoffen.find((x) => x.code === v.stof);

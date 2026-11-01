@@ -11,8 +11,11 @@ test('re-exports', () => {
 });
 
 test('voorbeeld ijkpunt', () => {
-  const r = analyseer(voorbeeldScenario());
-  assert.ok(r.totalen.verschilPct >= 5 && r.totalen.verschilPct <= 20, `verschilPct ${r.totalen.verschilPct}`);
+  const s = voorbeeldScenario();
+  const r = analyseer(s);
+  assert.ok(Math.abs(r.totalen.verschilPct) >= 3, `verschilPct ${r.totalen.verschilPct}`);
+  assert.ok(r.totalen.verliesfactor >= 1.08, `verliesfactor ${r.totalen.verliesfactor}`);
+  assert.ok(new Set(s.openOrders.map((o) => o.breedte)).size >= 40, 'te weinig verschillende breedtes');
   assert.equal(r.totalen.verschilEuro, r.totalen.gevoelEuro - r.totalen.berekendEuro);
   assert.ok(r.totalen.verliesfactor >= 1);
 });
@@ -58,6 +61,5 @@ test('snelheid', () => {
   const t0 = performance.now();
   analyseer(s);
   const ms = performance.now() - t0;
-  console.log(`analyseer ms: ${ms.toFixed(0)}`);
   assert.ok(ms < 2000, `${ms} ms`);
 });

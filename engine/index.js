@@ -11,7 +11,7 @@ export { maatklasse } from './normen.js';
 export { STRATEGIEEN } from './nesting.js';
 
 export function analyseer(scenario) {
-  const inst = scenario.instellingen;
+  const inst = scenario.instellingen || {};
   const stoffen = scenario.stoffen || [];
   const { doeken, stukken, waarschuwingen: wOpen } = maakStukken(scenario.openOrders || [], scenario);
   const normen = berekenNormen(scenario);

@@ -20,12 +20,12 @@ const PRODUCTTYPES = [
 const MIX = [
   ['screen', 46, [['S5A', 4], ['S3W', 3], ['VDG', 1]], [80, 400], [100, 300]],
   ['rolgordijn', 30, [['RLZ', 4], ['VDG', 1]], [50, 250], [80, 280]],
-  ['knikarm', 15, [['ZSB', 1], ['VDG', 4]], [200, 600], [150, 350]],
+  ['knikarm', 15, [['ZSB', 2], ['VDG', 3]], [200, 600], [150, 350]],
   ['uitval', 8, [['ZSB', 1]], [80, 300], [100, 250]],
 ];
 
-const HOOGTE_STD = 0.9;
-const PASSEND = 0.95;
+const HOOGTE_STD = 0.25;
+const PASSEND = 0.3;
 const MAANDDAGEN = [31, 30, 31, 31, 28, 31, 30, 31, 30, 31, 31, 30]; // 2025-11 .. 2026-10 (geen schrikkeljaar)
 const HISTORIE_MAANDEN = ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'];
 const MAAND_AANTAL = [34, 31, 36, 44, 70, 86, 88, 76, 52, 42, 38, 33];
@@ -42,39 +42,41 @@ export function voorbeeldScenario() {
   };
   const pad = (n) => String(n).padStart(2, '0');
 
-  const hoogteStd = (hb) => { const lijst = [150, 200, 250, 300].filter((h) => h >= hb[0] && h <= hb[1]); return lijst[int(0, lijst.length - 1)]; };
   const maakRegel = (orderNr, datum) => {
     const [product, , stoffen, bb, hb] = kies(MIX);
     const stof = kies(stoffen)[0];
     const r = rnd();
     const aantal = r < 0.72 ? 1 : r < 0.88 ? 2 : r < 0.96 ? 3 : 4;
-    // Veel orders hebben een maat die netjes in de rolbreedte past (gangbare standaardmaten).
     const st = STOFFEN.find((x) => x.code === stof);
     const pt = PRODUCTTYPES.find((x) => x.code === product);
     let breedte = stap5(bb[0], bb[1]);
     if (rnd() < PASSEND) {
-      // Gangbare maten: het doek of de banen vullen de rolbreedte (bijna) precies.
-      const rb = st.rolbreedte;
+      // Een deel van de maten sluit (ongeveer) aan op de rolbreedte, met wisselende marge.
       const opties = [];
-      const banen = stof === 'ZSB' && product === 'knikarm'; // streepdoek: n banen naast elkaar
-      for (let n = 1; n <= 5; n++) {
-        const totaal = banen ? n * rb - (n - 1) * 4 : Math.floor(rb / n); // snijbreedte van het doek, of 1/n rolbreedte
-        const b = totaal - pt.toeslagBreedte - int(0, 2);
-        if ((banen || n <= 3) && b >= bb[0] && b <= bb[1]) opties.push(b);
+      for (let n = 1; n <= 3; n++) {
+        const b = Math.floor(st.rolbreedte / n) - pt.toeslagBreedte - int(0, 15);
+        if (b >= bb[0] && b <= bb[1]) opties.push(b);
       }
       if (opties.length) breedte = opties[int(0, opties.length - 1)];
     }
-    return { orderNr, datum, product, stof, breedte, hoogte: rnd() < HOOGTE_STD ? hoogteStd(hb) : stap5(hb[0], hb[1]), aantal };
+    const hoogte = rnd() < HOOGTE_STD ? [150, 200, 250, 300].filter((h) => h >= hb[0] && h <= hb[1])[int(0, 1)] ?? stap5(hb[0], hb[1]) : stap5(hb[0], hb[1]);
+    return { orderNr, datum, product, stof, breedte, hoogte, aantal };
   };
 
   const openOrders = [];
   for (let i = 0; i < 60; i++) {
     openOrders.push(maakRegel(`O-2611-${pad(i + 1)}`, `2026-11-${pad(2 + Math.floor(i / 5))}`));
   }
-  // Garandeer een breed knikarmscherm op streepdoek (banen).
-  const idx = openOrders.findIndex((r) => r.product === 'knikarm' && r.stof === 'ZSB');
-  const ankerIdx = idx >= 0 ? idx : 0;
-  openOrders[ankerIdx] = { ...openOrders[ankerIdx], product: 'knikarm', stof: 'ZSB', breedte: Math.max(openOrders[ankerIdx].breedte, 500), aantal: 1 };
+  // Zorg voor minstens 3 knikarmschermen op streepdoek van 300-600 cm (banen), waarvan een > 480.
+  const isKZ = (r) => r.product === 'knikarm' && r.stof === 'ZSB';
+  const kandidaten = [...openOrders.filter((r) => r.product === 'knikarm' && !isKZ(r)), ...openOrders.filter((r) => r.product === 'uitval')];
+  while (openOrders.filter(isKZ).length < 3 && kandidaten.length) {
+    const r = kandidaten.shift();
+    Object.assign(r, { product: 'knikarm', stof: 'ZSB', breedte: stap5(300, 600), hoogte: stap5(150, 350) });
+  }
+  const kz = openOrders.filter(isKZ);
+  kz.forEach((r) => { if (r.breedte < 300) r.breedte = stap5(300, 600); });
+  if (!kz.some((r) => r.breedte > 480)) Object.assign(kz[0], { breedte: 500, hoogte: 250 });
 
   const historie = [];
   HISTORIE_MAANDEN.forEach((maand, m) => {
