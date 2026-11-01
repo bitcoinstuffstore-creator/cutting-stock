@@ -10,6 +10,20 @@ export function parseGetal(tekst) {
   return /^[+-]?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;
 }
 
+// Datum: JJJJ-MM-DD (ook met / of .), of D-M-JJJJ / DD-MM-JJJJ met -, / of . → ISO JJJJ-MM-DD; anders null.
+export function parseDatum(tekst) {
+  const t = String(tekst ?? '').trim();
+  let j, m, d;
+  let x = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(t);
+  if (x) [, j, m, d] = x;
+  else if ((x = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec(t))) [, d, m, j] = x;
+  else return null;
+  [j, m, d] = [j, m, d].map(Number);
+  const dagen = [31, (j % 4 === 0 && j % 100 !== 0) || j % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (m < 1 || m > 12 || d < 1 || d > dagen[m - 1]) return null;
+  return `${j}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
 const ALIASSEN = {
   orderNr: ['ordernr', 'order', 'ordernummer', 'ordernr.', 'order nr', 'order nummer', 'orderno', 'order_nr'],
   datum: ['datum', 'date', 'orderdatum'],
@@ -46,7 +60,9 @@ function splitRij(rij, sep) {
   return velden;
 }
 
-export function parseOrdersCSV(tekst, vandaag) {
+// opties.datumVerplicht (historie-import): een ontbrekende datum is een fout in plaats van vandaag.
+export function parseOrdersCSV(tekst, vandaag, opties = {}) {
+  const verplicht = opties.datumVerplicht ? [...VERPLICHT, 'datum'] : VERPLICHT;
   const regels = [];
   const fouten = [];
   const lijnen = String(tekst ?? '').replace(/^﻿/, '').split(/\r\n|\n|\r/);
@@ -60,7 +76,7 @@ export function parseOrdersCSV(tekst, vandaag) {
     const i = kop.findIndex(k => namen.includes(k));
     if (i !== -1) kolom[veld] = i;
   }
-  const ontbreekt = VERPLICHT.filter(v => kolom[v] === undefined);
+  const ontbreekt = verplicht.filter(v => kolom[v] === undefined);
   if (ontbreekt.length) {
     fouten.push({ regelNr: kopIdx + 1, melding: `Verplichte kolom(men) ontbreken: ${ontbreekt.join(', ')}` });
     return { regels, fouten };
@@ -83,9 +99,17 @@ export function parseOrdersCSV(tekst, vandaag) {
       aantal = parseGetal(get('aantal'));
       if (!(aantal >= 1) || !Number.isInteger(aantal)) { fouten.push({ regelNr, melding: `Ongeldig aantal: "${get('aantal')}".` }); continue; }
     }
+    let datum = vandaag;
+    if (get('datum') !== '') {
+      datum = parseDatum(get('datum'));
+      if (!datum) { fouten.push({ regelNr, melding: `Ongeldige datum: "${get('datum')}" (gebruik bijvoorbeeld 2026-11-02 of 2-11-2026).` }); continue; }
+    } else if (opties.datumVerplicht) {
+      fouten.push({ regelNr, melding: 'Datum ontbreekt (nodig voor de historie).' });
+      continue;
+    }
     regels.push({
       orderNr: get('orderNr'),
-      datum: get('datum') || vandaag,
+      datum,
       product: get('product'),
       stof,
       breedte,

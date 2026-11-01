@@ -84,3 +84,12 @@ test('leeg', () => {
   const leegBak = berekenVerbruik(nest([bak('a', 320, 300, [], 0)]), [], R, inst);
   assert.equal(leegBak.perBak.length, 0);
 });
+
+test('F11: m1 per doek telt exact op tot bruto m1, ook met een smal reststuk', () => {
+  const smal = bak('rs', 200, 300, [pl('d1', 100, 100)], 100);
+  const breed = bak('r', 320, 3000, [pl('d2', 300, 200)], 200);
+  const v = berekenVerbruik(nest([smal, breed]), [doek('d1'), doek('d2')], R, inst);
+  const som = v.doeken.reduce((s, d) => s + d.m1, 0);
+  assert.ok(Math.abs(som - v.totaal.brutoM1) < 1e-9, `${som} vs ${v.totaal.brutoM1}`);
+  for (const d of v.doeken) assert.ok(Math.abs(d.m1 - d.aandeel * v.totaal.brutoM1) < 1e-12);
+});

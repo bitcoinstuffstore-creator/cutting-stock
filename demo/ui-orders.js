@@ -23,6 +23,7 @@ const VOORBEELD_CSV = 'ordernr;datum;product;stof;breedte;hoogte;aantal\nA-1001;
 const ui = {
   importTekst: '',
   importMelding: '',
+  importLijst: 'open',
   bevestigLeeg: false,
   meldingenOpen: false,
   zichtbaar: { open: STAP.open, historie: STAP.historie },
@@ -89,7 +90,7 @@ function importVoorbeeld() {
   if (!ui.importTekst.trim()) {
     return { html: '<p class="import-status uitleg">Plak hierboven regels of kies een bestand. Je ziet eerst wat er herkend is.</p>', fouten: '' };
   }
-  const { regels, fouten } = parseOrdersCSV(ui.importTekst, vandaag());
+  const { regels, fouten } = parseOrdersCSV(ui.importTekst, vandaag(), { datumVerplicht: ui.importLijst === 'historie' });
   const rijen = regels.slice(0, 5).map((r) => `<tr><td class="tekst">${esc(r.orderNr)}</td><td class="tekst">${esc(r.product)}</td><td class="tekst">${esc(r.stof)}</td><td class="waarde">${getal(r.breedte, 0)} × ${getal(r.hoogte, 0)}</td><td class="waarde">${getal(r.aantal, 0)}</td></tr>`);
   const status = `<p class="import-status" id="import-telling"><b>${getal(regels.length, 0)}</b> ${regels.length === 1 ? 'regel' : 'regels'} herkend${fouten.length ? `, <b>${getal(fouten.length, 0)}</b> ${fouten.length === 1 ? 'fout' : 'fouten'}` : ''}.</p>`;
   const tabelHtml = regels.length
@@ -100,10 +101,11 @@ function importVoorbeeld() {
 }
 
 function importPaneelHTML(lijst) {
+  ui.importLijst = lijst;
   const vb = importVoorbeeld();
   return `<section class="paneel" aria-labelledby="import-titel">
     <div class="paneel-kop"><h3 id="import-titel">Orders importeren</h3></div>
-    <p class="uitleg">Plak regels uit Excel of een CSV-bestand. Kolommen: ordernr, datum, product, stof, breedte, hoogte, aantal (maten in cm). Scheidingsteken ; , of tab.</p>
+    <p class="uitleg">Plak regels uit Excel of een CSV-bestand. Kolommen: ordernr, datum, product, stof, breedte, hoogte, aantal (maten in cm). Scheidingsteken ; , of tab. Datum als 2026-11-02 of 2-11-2026${lijst === 'historie' ? '; voor de historie is de datum verplicht' : ''}.</p>
     <div>
       <label class="veld-label" for="import-tekst">Geplakte regels</label>
       <textarea id="import-tekst" rows="6" spellcheck="false" placeholder="${esc(VOORBEELD_CSV)}">${esc(ui.importTekst)}</textarea>
@@ -285,7 +287,7 @@ function leesBestand(input, el) {
 function importeer(state, acties, lijst) {
   const ta = document.getElementById('import-tekst');
   if (ta) ui.importTekst = ta.value;
-  const { regels, fouten } = parseOrdersCSV(ui.importTekst, vandaag());
+  const { regels, fouten } = parseOrdersCSV(ui.importTekst, vandaag(), { datumVerplicht: lijst === 'historie' });
   if (!regels.length) {
     ui.importMelding = fouten.length ? 'Geen regels toegevoegd: los eerst de fouten op.' : 'Er staat nog niets om te importeren.';
     acties.zet('ordersTab', lijst);

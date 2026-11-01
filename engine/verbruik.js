@@ -41,7 +41,7 @@ export function berekenVerbruik(nest, doeken, stof, instellingen) {
     const netto = nettoPerDoek.get(d.doekId);
     const aandeel = nettoM2 > 0 ? netto / nettoM2 : 0;
     const bruto = aandeel * brutoM2;
-    perDoek.push({ doekId: d.doekId, orderNr: d.orderNr, product: d.product, stof: d.stof, nettoM2: netto, aandeel, brutoM2: bruto, m1: bruto / (stof.rolbreedte / 100) });
+    perDoek.push({ doekId: d.doekId, orderNr: d.orderNr, product: d.product, stof: d.stof, nettoM2: netto, aandeel, brutoM2: bruto, m1: aandeel * totaal.brutoM1 });
   }
 
   return { perBak, totaal, doeken: perDoek };
