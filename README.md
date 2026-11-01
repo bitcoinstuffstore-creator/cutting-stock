@@ -2,7 +2,7 @@
 
 RollNest helpt zonweringbedrijven scherper stof inkopen. De demo zet orders om in koopadvies door de doeken echt te nesten op de rollen, in plaats van met een vuistregel (bijvoorbeeld "bestel 15% extra") te werken.
 
-Live demo: (link volgt)
+Live demo: https://claude.ai/artifact/JMxD5Ukmh5BQFo7j1cPkCs (privé; delen via het Share-menu)
 
 ## Wat de demo laat zien
 
