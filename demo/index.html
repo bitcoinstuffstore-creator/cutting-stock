@@ -448,6 +448,9 @@ details.meldingen .foutlijst { margin-top: 8px; }
 .staal-berekend, .balk-berekend { background: var(--accent); }
 .staal-gevoel, .balk-gevoel { background: var(--line-strong); }
 .vergelijk { width: 140px; display: grid; gap: 3px; padding: 2px 0; }
+/* Inkooptabel heeft 12 kolommen: iets compacter zodat hij op een laptopscherm past. */
+#tabel-inkoop th, #tabel-inkoop td.tekst, #tabel-inkoop td.waarde { padding-left: 5px; padding-right: 5px; }
+#tabel-inkoop .vergelijk { width: 88px; }
 .balk { display: block; height: 6px; border-radius: 1px; min-width: 1px; }
 .merk-tag {
   display: inline-block;
