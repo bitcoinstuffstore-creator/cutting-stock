@@ -31,6 +31,10 @@
   --warn-soft: #f6ebcf;
   --focus: #1f6fd1;
   --schaduw: rgb(16 24 32 / 0.22);
+  /* Doeken in het snijplan: 8 lichte vlakken met donkere tekst. */
+  --stuk-0: #cfe1f3; --stuk-1: #f6d7c3; --stuk-2: #d2eadb; --stuk-3: #e6daf2;
+  --stuk-4: #f3e5b3; --stuk-5: #cdeae8; --stuk-6: #f2d2dc; --stuk-7: #dbe2ea;
+  --stuk-rand: #55677a;
 
   --font-display: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -66,6 +70,9 @@
     --warn-soft: #33290f;
     --focus: #6aa8ff;
     --schaduw: rgb(0 0 0 / 0.55);
+    --stuk-0: #24496b; --stuk-1: #6b3a1f; --stuk-2: #23553a; --stuk-3: #4b3566;
+    --stuk-4: #5c4d16; --stuk-5: #1f5654; --stuk-6: #642c3c; --stuk-7: #3a4654;
+    --stuk-rand: #0b1015;
     color-scheme: dark;
   }
 }
@@ -95,6 +102,9 @@
   --warn-soft: #33290f;
   --focus: #6aa8ff;
   --schaduw: rgb(0 0 0 / 0.55);
+  --stuk-0: #24496b; --stuk-1: #6b3a1f; --stuk-2: #23553a; --stuk-3: #4b3566;
+  --stuk-4: #5c4d16; --stuk-5: #1f5654; --stuk-6: #642c3c; --stuk-7: #3a4654;
+  --stuk-rand: #0b1015;
   color-scheme: dark;
 }
 
@@ -427,6 +437,136 @@ details.meldingen .foutlijst { margin-top: 8px; }
 
 .leeg-staat { padding: 28px 16px; text-align: center; color: var(--muted); }
 
+/* ---------- Resultaat ---------- */
+#scherm { grid-template-columns: minmax(0, 1fr); }
+.schakel.subtabs { max-width: 100%; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.schakel.subtabs button { white-space: nowrap; }
+.legenda { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 0.82rem; color: var(--muted); }
+.legenda-item { display: inline-flex; align-items: center; gap: 6px; }
+.staal { display: inline-block; width: 18px; height: 6px; border-radius: 1px; }
+.staal-berekend, .balk-berekend { background: var(--accent); }
+.staal-gevoel, .balk-gevoel { background: var(--line-strong); }
+.vergelijk { width: 140px; display: grid; gap: 3px; padding: 2px 0; }
+.balk { display: block; height: 6px; border-radius: 1px; min-width: 1px; }
+.merk-tag {
+  display: inline-block;
+  font: 600 0.7rem var(--font-body);
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 0 4px;
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+.verschil-tag {
+  display: inline-block;
+  font: 600 0.72rem var(--font-body);
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 0 5px;
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+td.verschil[data-soort="te-weinig"] { color: var(--bad); }
+td.verschil[data-soort="te-veel"] { color: var(--good); }
+td.verschil[data-soort="gelijk"] { color: var(--muted); }
+tfoot td.verschil .verschil-tag { font-weight: 700; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 12px 16px; }
+.filters .veld { width: min(240px, 100%); }
+table.normen tr.groep th {
+  position: static;
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  text-transform: none;
+  padding-top: 12px;
+}
+table.normen tbody tr.groep:hover th { background: var(--surface); }
+.grafieken { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
+.grafiek-kaart { margin: 0; border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px 6px; display: grid; gap: 6px; min-width: 0; }
+.grafiek-kaart figcaption { font-size: 0.9rem; }
+.grafiek-kaart figcaption b { font-weight: 600; }
+.grafiek { display: block; overflow: visible; }
+.grafiek .staaf { fill: var(--accent); }
+.grafiek g:hover .staaf { fill: var(--accent-hover); }
+.grafiek .staaf-raak { fill: var(--fg); fill-opacity: 0; }
+.grafiek g:hover .staaf-raak { fill-opacity: 0.05; }
+.grafiek .as-label { fill: var(--muted); font: 10px var(--font-mono); }
+.grafiek .as-lijn { stroke: var(--line-strong); stroke-width: 1; }
+.grafiek .hulplijn { stroke: var(--line); stroke-dasharray: 2 3; }
+
+.snijplan-balk { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; }
+.veld-stof { width: min(320px, 100%); }
+.kerngetallen { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(130px, 100%), 1fr)); gap: 8px 16px; }
+.kerngetallen div { min-width: 0; }
+.kerngetallen dt { font: 600 0.72rem var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.kerngetallen dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.kerngetallen dd.tekst { font-family: var(--font-body); font-size: 0.88rem; }
+.bakken { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); align-items: start; }
+.bak-kaart, .werkbon-rol {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.bak-kop { display: grid; gap: 2px; }
+.bak-kop h3 { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-weight: 500; font-size: 0.95rem; }
+.bak-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.soort-tag {
+  font: 600 0.7rem var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 1px 6px;
+}
+.soort-tag[data-soort="nieuw"] { color: var(--accent); }
+.snijplan-kader {
+  max-height: 70vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--surface-2);
+  padding: 6px;
+}
+.snijplan-svg { display: block; }
+.snijplan-svg .arcering-vlak { fill: var(--surface-2); }
+.snijplan-svg .arcering-lijn { stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.snijplan-svg .rand { fill: none; stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.snijplan-svg .stuk { stroke: var(--stuk-rand); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.snijplan-svg g:hover .stuk { stroke: var(--accent); stroke-width: 2; }
+.snijplan-svg .stuk-label { fill: var(--fg); font-family: var(--font-mono); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.kleur-0 .stuk { fill: var(--stuk-0); } .kleur-1 .stuk { fill: var(--stuk-1); }
+.kleur-2 .stuk { fill: var(--stuk-2); } .kleur-3 .stuk { fill: var(--stuk-3); }
+.kleur-4 .stuk { fill: var(--stuk-4); } .kleur-5 .stuk { fill: var(--stuk-5); }
+.kleur-6 .stuk { fill: var(--stuk-6); } .kleur-7 .stuk { fill: var(--stuk-7); }
+
+/* Werkbon: zwart op wit, genummerde stukken en een aftekenlijst per rol. */
+.werkbon { display: grid; gap: 14px; }
+.werkbon-titel { font: 600 1.05rem var(--font-display); }
+.werkbon-inhoud { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; }
+.werkbon-plan { display: flex; justify-content: center; }
+.werkbon-plan .snijplan-svg { width: auto; max-width: 100%; height: clamp(160px, calc(var(--l) * 0.28px), 80vh); }
+.werkbon .wb .stuk { fill: var(--surface); stroke: var(--fg); }
+.werkbon .snijplan-svg .stuk-label { font-weight: 600; }
+.werkbon-tabel td.vink-vak { width: 36px; text-align: center; }
+.werkbon-tabel td.vink-vak::after { content: ""; display: inline-block; width: 14px; height: 14px; margin: 5px; border: 1px solid var(--line-strong); border-radius: 2px; vertical-align: middle; }
+th.vink { text-align: center; }
+@media (max-width: 640px) {
+  .werkbon-inhoud { grid-template-columns: minmax(0, 1fr); }
+  .schakel.subtabs { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .schakel.subtabs button:nth-child(odd) { border-left: 0; }
+  .schakel.subtabs button:nth-child(n+3) { border-top: 1px solid var(--line-strong); }
+}
+
 @media (max-width: 720px) {
   .kpis { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .kpi { padding: 8px 12px; gap: 1px; }
@@ -438,6 +578,31 @@ details.meldingen .foutlijst { margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+/* ---------- Printen (lokaal geopend): alleen het werkscherm, zwart op wit ---------- */
+@media print {
+  :root[data-theme], :root:not([data-theme]) {
+    --bg: #ffffff; --surface: #ffffff; --surface-2: #f2f2f2;
+    --line: #9a9a9a; --line-strong: #555555; --fg: #000000; --muted: #333333;
+    --accent: #000000; --accent-hover: #000000; --good: #000000; --bad: #000000; --warn: #000000;
+    --good-soft: #ffffff; --bad-soft: #ffffff; --warn-soft: #ffffff;
+    --stuk-0: #cfe1f3; --stuk-1: #f6d7c3; --stuk-2: #d2eadb; --stuk-3: #e6daf2;
+    --stuk-4: #f3e5b3; --stuk-5: #cdeae8; --stuk-6: #f2d2dc; --stuk-7: #dbe2ea;
+    --stuk-rand: #000000;
+    color-scheme: light;
+  }
+  body { font-size: 11pt; }
+  body::before, .kop, .voet, .toast, .geen-print, details.meldingen { display: none !important; }
+  main .binnen { padding: 0; max-width: none; }
+  .paneel, .bak-kaart, .werkbon-rol, .tabel-scroll { border-color: var(--line); }
+  .snijplan-kader, .tabel-scroll { max-height: none; overflow: visible; }
+  .bak-kaart, .grafiek-kaart, tr { break-inside: avoid; }
+  .werkbon-rol { break-inside: avoid; border: 0; padding: 0; }
+  .werkbon-rol + .werkbon-rol { break-before: page; }
+  .werkbon-plan .snijplan-svg { height: clamp(40mm, calc(var(--l) * 0.08mm), 235mm); }
+  th { position: static; }
+  .snijplan-svg, .staal, .balk { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+
 </style>
 
 <header class="kop">

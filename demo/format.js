@@ -37,13 +37,13 @@ export function naarCSV(kolommen, rijen) {
   return [kop, ...body].join('\n');
 }
 
-// Een tabel-scrollkader met kop en rijen (rijen zijn al HTML-strings).
-export function tabel({ id = '', koppen, rijen, klasse = '' }) {
+// Een tabel-scrollkader met kop en rijen (rijen en voet zijn al HTML-strings).
+export function tabel({ id = '', koppen, rijen, klasse = '', voet = '' }) {
   const th = koppen.map((k) => {
     const [tekst, cls] = Array.isArray(k) ? k : [k, ''];
     return `<th${cls ? ` class="${cls}"` : ''} scope="col">${esc(tekst)}</th>`;
   }).join('');
-  return `<div class="tabel-scroll"><table${id ? ` id="${id}"` : ''} class="${klasse}"><thead><tr>${th}</tr></thead><tbody>${rijen.join('')}</tbody></table></div>`;
+  return `<div class="tabel-scroll"><table${id ? ` id="${id}"` : ''} class="${klasse}"><thead><tr>${th}</tr></thead><tbody>${rijen.join('')}</tbody>${voet ? `<tfoot>${voet}</tfoot>` : ''}</table></div>`;
 }
 
 // Getal uit een invoerveld: komma of punt als decimaalteken, punt als duizendtal (1.250).

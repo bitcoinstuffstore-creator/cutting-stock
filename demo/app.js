@@ -3,10 +3,11 @@ import { analyseer } from './engine/index.js';
 import { voorbeeldScenario } from './engine/voorbeelddata.js';
 import { laadScenario, bewaarScenario, laadThema, bewaarThema } from './opslag.js';
 import { normaliseer } from './scenario.js';
-import { getal, euro, esc, tabel } from './format.js';
+import { getal, euro, esc } from './format.js';
 import { exportPaneelHTML, kopieer } from './export-paneel.js';
 import { renderOrders, verlaatOrders } from './ui-orders.js';
 import { renderStoffen } from './ui-stoffen.js';
+import { renderResultaat } from './ui-resultaat.js';
 
 const TABS = ['orders', 'stoffen', 'resultaat'];
 const NOOP_OPSLAG = { getItem: () => null, setItem() {} };
@@ -209,37 +210,11 @@ document.querySelector('.tabs').addEventListener('keydown', (e) => {
 });
 window.addEventListener('hashchange', () => kiesTab(location.hash.slice(1), { hash: false }));
 
-// ---------- Voorlopig resultaatscherm (Task 10 vervangt dit door ui-resultaat.js) ----------
-function renderResultaatVoorlopig(el, st) {
-  if (!st.scenario.openOrders.length) {
-    el.innerHTML = '<div class="paneel leeg-staat">Nog geen open orders — laad de voorbeelddata of importeer een CSV.</div>';
-    return;
-  }
-  if (!st.resultaat) {
-    el.innerHTML = '<div class="paneel leeg-staat">Bezig met rekenen…</div>';
-    return;
-  }
-  const regels = Object.values(st.resultaat.perStof);
-  const rijen = regels.map(({ stof, inkoop }) => `<tr>
-      <td class="tekst">${esc(stof.naam)} <span class="bron-tag">${esc(stof.code)}</span></td>
-      <td class="waarde">${getal(inkoop.teBestellenRollen, 0)}</td>
-      <td class="waarde">${getal(inkoop.teBestellenM1)}</td>
-      <td class="waarde">${euro(inkoop.kosten)}</td>
-    </tr>`);
-  const som = (f) => regels.reduce((s, r) => s + f(r.inkoop), 0);
-  el.innerHTML = `
-    <div class="scherm-kop"><h2>Inkoopadvies</h2><p>Zoveel stof bestel je voor deze periode, per stof.</p></div>
-    <div class="paneel">
-      ${tabel({ id: 'tabel-inkoop', koppen: ['Stof', ['Rollen', 'num'], ['m¹', 'num'], ['Kosten', 'num']], rijen })
-        .replace('</tbody></table>', `</tbody><tfoot><tr><td>Totaal</td><td class="waarde">${getal(som((i) => i.teBestellenRollen), 0)}</td><td class="waarde">${getal(som((i) => i.teBestellenM1))}</td><td class="waarde">${euro(st.resultaat.totalen.kosten)}</td></tr></tfoot></table>`)}
-    </div>`;
-}
-
-// Elk scherm: render(el, state, acties). Task 10 koppelt hier renderResultaat uit ui-resultaat.js.
+// Elk scherm: render(el, state, acties).
 const SCHERMEN = {
   orders: renderOrders,
   stoffen: renderStoffen,
-  resultaat: renderResultaatVoorlopig,
+  resultaat: renderResultaat,
 };
 
 // ---------- Voet: privacy + scenario exporteren/importeren ----------
@@ -388,11 +363,14 @@ function bewaarScroll() {
     const id = kader.querySelector('table')?.id;
     if (id) pos.set(id, [kader.scrollLeft, kader.scrollTop]);
   }
+  // Andere scrollkaders (bv. een snijplan) met een eigen id.
+  for (const kader of schermEl.querySelectorAll('[data-scroll-kader][id]')) pos.set(kader.id, [kader.scrollLeft, kader.scrollTop]);
   return pos;
 }
 function herstelScroll(pos) {
   for (const [id, [links, boven]] of pos) {
-    const kader = document.getElementById(id)?.closest('.tabel-scroll');
+    const el = document.getElementById(id);
+    const kader = el?.hasAttribute('data-scroll-kader') ? el : el?.closest('.tabel-scroll');
     if (kader) { kader.scrollLeft = links; kader.scrollTop = boven; }
   }
 }
