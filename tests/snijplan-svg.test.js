@@ -100,3 +100,8 @@ test('svg schaalt mee: geen vaste hoogte, geen vervorming', () => {
 test('veiligId', () => {
   assert.equal(veiligId('R "1"/a'), 'R__1__a');
 });
+
+test('F3: vast gedraaid stuk heet ook gedraaid in de tooltip', () => {
+  const bak = { id: 'r', breedte: 250, gebruikteLengte: 304, plaatsingen: [{ stukId: '0:A#1/1', doekId: '0:A#1', x: 0, y: 0, w: 212, h: 304, gedraaid: false, vastGedraaid: true }] };
+  assert.match(snijplanSVG(bak), /\(gedraaid\)/);
+});

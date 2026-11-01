@@ -42,8 +42,9 @@ Alle invoer zit in één JSON-object, het **scenario**. Dat is ook het formaat v
 ```js
 {
   versie: 1,
-  stoffen: [ { code, naam, rolbreedte /*cm*/, rollengte /*m*/, prijsPerM1 /*€*/, draaienToegestaan /*bool*/ } ],
-  producttypes: [ { code, naam, toeslagBreedte /*cm*/, toeslagHoogte /*cm*/ } ],
+  stoffen: [ { code, naam, rolbreedte /*cm*/, rollengte /*m*/, prijsPerM1 /*€*/, draaien: 'nooit' | 'alsTeBreed' | 'vrij' } ],
+  // (oude scenario's met draaienToegestaan: true/false worden 'vrij'/'nooit')
+  producttypes: [ { code, naam, toeslagBreedte /*cm*/, toeslagHoogte /*cm*/, banenToegestaan /*bool: screen en rolgordijn false*/ } ],
   openOrders: [ Orderregel ],
   historie:   [ Orderregel ],
   voorraad: [ { id, stof /*code*/, soort: 'rol' | 'reststuk', breedte /*cm*/, lengte /*cm*/ } ],
@@ -70,11 +71,13 @@ De kern bestaat uit pure functies in ES-modules, zonder DOM. Ze draaien zowel in
 ### 4.1 `engine/snijmaat.js` — van ordermaat naar stukken
 
 - `snijB = breedte + toeslagBreedte` en `snijH = hoogte + toeslagHoogte`, met de toeslagen van het producttype.
-- **Normaal:** het stuk is `snijB` over de rol en `snijH` langs de rol. Als de stof het toestaat, mag de nesting het stuk later draaien.
-- **Te breed voor de rol** (`snijB > rolbreedte`):
-  - Als draaien mag en `snijH ≤ rolbreedte`, wordt het stuk vast gedraaid geplaatst: `snijH` over de rol en `snijB` langs de rol.
+- Elke past-beslissing rekent met de snijspeling `s`: een stuk past over de rol als `w + s ≤ rolbreedte`.
+- **Normaal:** het stuk is `snijB` over de rol en `snijH` langs de rol. Alleen bij `draaien: 'vrij'` mag de nesting het stuk later draaien.
+- **Te breed voor de rol** (`snijB + s > rolbreedte`):
+  - Als `draaien` 'alsTeBreed' of 'vrij' is en `snijH + s ≤ rolbreedte`, wordt het stuk vast gedraaid geplaatst: `snijH` over de rol en `snijB` langs de rol.
+  - Staat het producttype geen banen toe (`banenToegestaan: false`, screens en rolgordijnen), dan is het doek **onplaatsbaar**: "te breed voor deze stof; kies een bredere stof".
   - In alle andere gevallen wordt het doek **in banen** gesplitst. Neem de kleinste `n ≥ 2` waarvoor `(snijB + (n−1)·naadtoeslag) / n ≤ rolbreedte`. Elke baan krijgt de breedte `(snijB + (n−1)·naadtoeslag) / n` en de lengte `snijH`.
-  - Banen worden **niet** gedraaid, zodat de looprichting gelijk blijft binnen één doek.
+  - Banen worden **niet** gedraaid, zodat de looprichting gelijk blijft binnen één doek. De nesting plaatst alle banen van één doek als één blok achter elkaar uit dezelfde bak (verfpartij, streeppatroon).
 - **Te lang voor de rol:** een stuk dat langer is dan de rollengte wordt gemarkeerd als **onplaatsbaar** en komt in de waarschuwingen. Hetzelfde gebeurt bij een onbekende stof of producttype, of een maat ≤ 0.
 - Elk stuk krijgt een verwijzing terug naar zijn doek: `{ doekId, orderNr, product, stof, w, h, magDraaien, baan: i/n }`.
 
@@ -193,11 +196,11 @@ Een fictief bedrijf, *"Zonwering Voorbeeld BV"*, zonder echte merknamen.
 
 | Stof | Rol | Prijs | Draaien |
 |---|---|---|---|
-| Screen 5% Antraciet | 250 cm × 30 m | €14/m¹ | mag |
-| Screen 3% Wit | 320 cm × 30 m | €17/m¹ | mag |
-| Verduisterend Grijs | 300 cm × 40 m | €12/m¹ | mag |
-| Rolgordijn Linnen Zand | 200 cm × 50 m | €9/m¹ | mag niet (structuur) |
-| Zonneschermdoek Streep Blauw | 120 cm × 40 m | €11/m¹ | mag niet (streep) |
+| Screen 5% Antraciet | 250 cm × 30 m | €14/m¹ | alleen als te breed |
+| Screen 3% Wit | 320 cm × 30 m | €17/m¹ | alleen als te breed |
+| Verduisterend Grijs | 300 cm × 40 m | €12/m¹ | vrij |
+| Rolgordijn Linnen Zand | 200 cm × 50 m | €9/m¹ | nooit (structuur) |
+| Zonneschermdoek Streep Blauw | 120 cm × 40 m | €11/m¹ | nooit (streep) |
 
 **Producttypes:**
 

@@ -2,6 +2,9 @@
 // Zuiver: geen DOM, geen engine-imports.
 export const STANDAARD_INSTELLINGEN = { naadtoeslag: 4, snijspeling: 0, minReststukLengte: 50, gevoelToeslag: 15, historieMaanden: 3, horizonMaanden: 1 };
 const HORIZONNEN = [0, 1, 3];
+export const DRAAIEN = ['nooit', 'alsTeBreed', 'vrij'];
+// Screens en rolgordijnen bestaan niet uit genaaide banen; zonneschermdoek wel.
+const ZONDER_BANEN = /screen|rolgordijn/i;
 
 const isObject = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
 const lijst = (x) => (Array.isArray(x) ? x.filter(isObject) : []);
@@ -50,13 +53,15 @@ export function normaliseer(sc) {
       rolbreedte: getal(s.rolbreedte),
       rollengte: getal(s.rollengte),
       prijsPerM1: getal(s.prijsPerM1, 0),
-      draaienToegestaan: !!s.draaienToegestaan,
+      // Oud scenario: draaienToegestaan (boolean) → true = vrij, false = nooit.
+      draaien: DRAAIEN.includes(s.draaien) ? s.draaien : s.draaienToegestaan ? 'vrij' : 'nooit',
     })),
     producttypes: lijst(bron.producttypes).map((p) => ({
       code: tekst(p.code),
       naam: tekst(p.naam, tekst(p.code)),
       toeslagBreedte: getal(p.toeslagBreedte, 0),
       toeslagHoogte: getal(p.toeslagHoogte, 0),
+      banenToegestaan: typeof p.banenToegestaan === 'boolean' ? p.banenToegestaan : !ZONDER_BANEN.test(`${tekst(p.code)} ${tekst(p.naam)}`),
     })),
     openOrders: lijst(bron.openOrders).map(orderregel),
     historie: lijst(bron.historie).map(orderregel),

@@ -1,6 +1,7 @@
 import { maakStukken } from './snijmaat.js';
 import { nestStof } from './nesting.js';
 import { berekenVerbruik } from './verbruik.js';
+import { geldigeStof } from './catalogus.js';
 
 const KLASSEN = ['<150', '150-249', '250-349', '>=350'];
 
@@ -19,13 +20,14 @@ const maandNaam = (i) => `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(
 export function berekenNormen(scenario) {
   const inst = scenario.instellingen || {};
   const ongeldigeDatum = [];
-  const historie = (scenario.historie || []).filter((r) => {
-    if (GELDIGE_MAAND.test(String(r.datum ?? ''))) return true;
-    ongeldigeDatum.push({ soort: 'ongeldigeDatum', orderNr: r.orderNr, melding: `Order ${r.orderNr}: ongeldige datum "${r.datum ?? ''}" (verwacht JJJJ-MM-DD); regel genegeerd in de historie.` });
+  const bronIndex = []; // index in de gefilterde historie → index in scenario.historie
+  const historie = (scenario.historie || []).filter((r, i) => {
+    if (GELDIGE_MAAND.test(String(r.datum ?? ''))) { bronIndex.push(i); return true; }
+    ongeldigeDatum.push({ soort: 'ongeldigeDatum', orderNr: r.orderNr, regelIndex: i, melding: `Order ${r.orderNr}: ongeldige datum "${r.datum ?? ''}" (verwacht JJJJ-MM-DD); regel genegeerd in de historie.` });
     return false;
   });
   const { doeken, stukken, waarschuwingen: wMaak } = maakStukken(historie, scenario);
-  const waarschuwingen = [...wMaak, ...ongeldigeDatum];
+  const waarschuwingen = [...wMaak.map((w) => ({ ...w, regelIndex: bronIndex[w.regelIndex] })), ...ongeldigeDatum];
 
   const maandVan = (d) => d.datum.slice(0, 7);
   const maandenMetData = doeken.map(maandVan).sort();
@@ -43,6 +45,7 @@ export function berekenNormen(scenario) {
   const aantalVenster = Math.min(inst.historieMaanden ?? 0, maanden.length);
 
   for (const stof of scenario.stoffen) {
+    if (!geldigeStof(stof)) continue;
     const stofDoeken = doeken.filter((d) => d.stof === stof.code);
     const stofStukken = stukken.filter((s) => s.stof === stof.code);
     const perMaand = new Map(maanden.map((m) => [m, 0]));

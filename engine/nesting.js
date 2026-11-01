@@ -18,6 +18,31 @@ function maakBak(id, soort, voorraadId, breedte, lengte, packerSoort) {
   };
 }
 
+// Losse stukken blijven los; stukken met een baan worden per doek samengevoegd (volgorde van baan i).
+function maakEenheden(stukken, s) {
+  const eenheden = [];
+  const perDoek = new Map();
+  for (const st of stukken) {
+    if (!st.baan) {
+      eenheden.push({ id: st.id, w: st.w, h: st.h, magDraaien: !!st.magDraaien && !st.vastGedraaid, leden: [st] });
+      continue;
+    }
+    if (!perDoek.has(st.doekId)) {
+      const e = { id: st.id, w: 0, h: 0, magDraaien: false, leden: [] };
+      perDoek.set(st.doekId, e);
+      eenheden.push(e);
+    }
+    perDoek.get(st.doekId).leden.push(st);
+  }
+  for (const e of perDoek.values()) {
+    e.leden.sort((a, b) => a.baan.i - b.baan.i);
+    e.id = e.leden[0].id;
+    e.w = Math.max(...e.leden.map((x) => x.w));
+    e.h = e.leden.reduce((t, x) => t + x.h, 0) + (e.leden.length - 1) * s;
+  }
+  return eenheden;
+}
+
 // Eén run met een vaste strategie. Begint altijd met verse packers.
 export function nestMetStrategie(stukken, stof, voorraad, instellingen, naam) {
   const [packerSoort, sleutelNaam] = naam.split('/');
@@ -30,30 +55,34 @@ export function nestMetStrategie(stukken, stof, voorraad, instellingen, naam) {
     .sort((a, b) => a.lengte - b.lengte || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const rollen = voorraad.filter((v) => v.soort !== 'reststuk');
   const bakken = [...reststukken, ...rollen].map((v) =>
-    maakBak(v.id, v.soort === 'reststuk' ? 'reststuk' : 'rol', v.id, v.breedte, v.lengte, packerSoort));
+    maakBak(v.id, v.soort === 'reststuk' ? 'reststuk' : 'rol', v.voorraadId ?? v.id, v.breedte, v.lengte, packerSoort));
 
-  const volgorde = [...stukken].sort((a, b) => sleutel(b) - sleutel(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const volgorde = [...maakEenheden(stukken, s)].sort((a, b) => sleutel(b) - sleutel(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const onplaatsbaar = [];
   let nieuweRollen = 0;
 
-  const probeer = (b, st) => {
-    const r = b.packer.plaats(st.w + s, st.h + s, st.magDraaien && !st.vastGedraaid);
+  // Een eenheid is één los stuk of alle banen van één doek als één blok (w x n.h + speling ertussen),
+  // ongedraaid geplaatst en daarna uitgevouwen tot n plaatsingen onder elkaar.
+  const probeer = (b, e) => {
+    const r = b.packer.plaats(e.w + s, e.h + s, e.magDraaien);
     if (!r) return false;
-    b.bak.plaatsingen.push({
-      stukId: st.id, doekId: st.doekId, x: r.x, y: r.y,
-      w: r.w - s, h: r.h - s, gedraaid: r.gedraaid,
-    });
+    e.leden.forEach((st, k) => b.bak.plaatsingen.push({
+      stukId: st.id, doekId: st.doekId,
+      x: r.x, y: r.y + k * (st.h + s),
+      w: r.gedraaid ? st.h : st.w, h: r.gedraaid ? st.w : st.h,
+      gedraaid: r.gedraaid, vastGedraaid: !!st.vastGedraaid,
+    }));
     return true;
   };
 
-  for (const st of volgorde) {
-    if (bakken.some((b) => probeer(b, st))) continue;
+  for (const e of volgorde) {
+    if (bakken.some((b) => probeer(b, e))) continue;
     const nieuw = maakBak(`nieuw-${nieuweRollen + 1}`, 'nieuw', null, stof.rolbreedte, stof.rollengte * 100, packerSoort);
-    if (probeer(nieuw, st)) {
+    if (probeer(nieuw, e)) {
       nieuweRollen++;
       bakken.push(nieuw);
     } else {
-      onplaatsbaar.push(st);
+      onplaatsbaar.push(...e.leden);
     }
   }
 

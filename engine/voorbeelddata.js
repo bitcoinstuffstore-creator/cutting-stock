@@ -2,18 +2,18 @@
 import { mulberry32 } from './random.js';
 
 const STOFFEN = [
-  { code: 'S5A', naam: 'Screen 5% Antraciet', rolbreedte: 250, rollengte: 30, prijsPerM1: 14, draaienToegestaan: true },
-  { code: 'S3W', naam: 'Screen 3% Wit', rolbreedte: 320, rollengte: 30, prijsPerM1: 17, draaienToegestaan: true },
-  { code: 'VDG', naam: 'Verduisterend Grijs', rolbreedte: 300, rollengte: 40, prijsPerM1: 12, draaienToegestaan: true },
-  { code: 'RLZ', naam: 'Rolgordijn Linnen Zand', rolbreedte: 200, rollengte: 50, prijsPerM1: 9, draaienToegestaan: false },
-  { code: 'ZSB', naam: 'Zonneschermdoek Streep Blauw', rolbreedte: 120, rollengte: 40, prijsPerM1: 11, draaienToegestaan: false },
+  { code: 'S5A', naam: 'Screen 5% Antraciet', rolbreedte: 250, rollengte: 30, prijsPerM1: 14, draaien: 'alsTeBreed' },
+  { code: 'S3W', naam: 'Screen 3% Wit', rolbreedte: 320, rollengte: 30, prijsPerM1: 17, draaien: 'alsTeBreed' },
+  { code: 'VDG', naam: 'Verduisterend Grijs', rolbreedte: 300, rollengte: 40, prijsPerM1: 12, draaien: 'vrij' },
+  { code: 'RLZ', naam: 'Rolgordijn Linnen Zand', rolbreedte: 200, rollengte: 50, prijsPerM1: 9, draaien: 'nooit' },
+  { code: 'ZSB', naam: 'Zonneschermdoek Streep Blauw', rolbreedte: 120, rollengte: 40, prijsPerM1: 11, draaien: 'nooit' },
 ];
 
 const PRODUCTTYPES = [
-  { code: 'screen', naam: 'Screen', toeslagBreedte: 4, toeslagHoogte: 12 },
-  { code: 'rolgordijn', naam: 'Rolgordijn', toeslagBreedte: 2, toeslagHoogte: 15 },
-  { code: 'knikarm', naam: 'Knikarmscherm', toeslagBreedte: 6, toeslagHoogte: 20 },
-  { code: 'uitval', naam: 'Uitvalscherm', toeslagBreedte: 4, toeslagHoogte: 15 },
+  { code: 'screen', naam: 'Screen', toeslagBreedte: 4, toeslagHoogte: 12, banenToegestaan: false },
+  { code: 'rolgordijn', naam: 'Rolgordijn', toeslagBreedte: 2, toeslagHoogte: 15, banenToegestaan: false },
+  { code: 'knikarm', naam: 'Knikarmscherm', toeslagBreedte: 6, toeslagHoogte: 20, banenToegestaan: true },
+  { code: 'uitval', naam: 'Uitvalscherm', toeslagBreedte: 4, toeslagHoogte: 15, banenToegestaan: true },
 ];
 
 // Productmix: [product, gewicht, [stof, gewicht][], B-bereik, H-bereik]
@@ -54,12 +54,21 @@ export function voorbeeldScenario() {
       // Een deel van de maten sluit (ongeveer) aan op de rolbreedte, met wisselende marge.
       const opties = [];
       for (let n = 1; n <= 3; n++) {
-        const b = Math.floor(st.rolbreedte / n) - pt.toeslagBreedte - int(0, 15);
+        const b = Math.floor(st.rolbreedte / n) - pt.toeslagBreedte - int(pt.banenToegestaan ? 0 : 2, 15);
         if (b >= bb[0] && b <= bb[1]) opties.push(b);
       }
       if (opties.length) breedte = opties[int(0, opties.length - 1)];
     }
     const hoogte = rnd() < HOOGTE_STD ? [150, 200, 250, 300].filter((h) => h >= hb[0] && h <= hb[1])[int(0, 1)] ?? stap5(hb[0], hb[1]) : stap5(hb[0], hb[1]);
+    // Screens en rolgordijnen hebben geen banen: de snijmaat (plus 2 cm snijspeling) moet op de rol passen,
+    // eventueel gedraaid als de stof dat toelaat. Anders wordt het doek smaller dan de rol gemaakt.
+    if (!pt.banenToegestaan) {
+      const past = (cm) => cm + 2 <= st.rolbreedte;
+      const draaibaar = st.draaien !== 'nooit' && past(hoogte + pt.toeslagHoogte);
+      if (!past(breedte + pt.toeslagBreedte) && !draaibaar) {
+        breedte = Math.max(bb[0], st.rolbreedte - pt.toeslagBreedte - 2 - int(0, 30));
+      }
+    }
     return { orderNr, datum, product, stof, breedte, hoogte, aantal };
   };
 

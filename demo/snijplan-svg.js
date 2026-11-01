@@ -29,7 +29,7 @@ const standaardLabel = (p, baan) => [
 ];
 
 /**
- * @param bak    { id, breedte, gebruikteLengte, plaatsingen[{stukId, doekId, x, y, w, h, gedraaid}] }
+ * @param bak    { id, breedte, gebruikteLengte, plaatsingen[{stukId, doekId, x, y, w, h, gedraaid, vastGedraaid}] }
  * @param opties kleurVoor(doekId) → CSS-klasse (bv. 'kleur-3'); label(p) → string | string[];
  *               titel(p) → tooltip; verliesLengte: cm extra onderaan (restlengte die verlies is);
  *               refBreedte: breedte waarop de lettergrootte schaalt (standaard de bakbreedte);
@@ -60,7 +60,7 @@ export function snijplanSVG(bak, opties = {}) {
   const stukken = bak.plaatsingen.map((p) => {
     const baan = baanVan(p, delen(p.doekId));
     const regels = [].concat(label(p, baan)).filter((t) => t != null && t !== '').map(String);
-    const tip = titel ? titel(p, baan) : `${regels.join(' · ')}${p.gedraaid ? ' (gedraaid)' : ''}`;
+    const tip = titel ? titel(p, baan) : `${regels.join(' · ')}${p.gedraaid || p.vastGedraaid ? ' (gedraaid)' : ''}`;
     const cx = r2(p.x + p.w / 2);
     const cy = r2(p.y + p.h / 2);
     let tekst = '';

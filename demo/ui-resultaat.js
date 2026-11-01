@@ -22,6 +22,8 @@ const ui = { export: null, filterStof: '', filterProduct: '', stof: null, werkbo
 
 const maat = (b, h) => `${getal(b, b % 1 ? 1 : 0)} × ${getal(h, h % 1 ? 1 : 0)}`;
 const pct = (v) => `${getal(v, 1)}%`;
+// Gedraaid: door de nesting (gedraaid) of al in de snijmaat omdat het doek te breed was (vastGedraaid).
+const isGedraaid = (p) => !!(p.gedraaid || p.vastGedraaid);
 
 function strategieTekst(naam) {
   const [p, s] = String(naam || '').split('/');
@@ -165,7 +167,7 @@ function inkoopScherm(r, sc) {
 function waarschuwingenPaneel(r) {
   if (!r.waarschuwingen.length) return '';
   const open = r.waarschuwingen.filter((w) => w.bron === 'open').length;
-  const items = r.waarschuwingen.map((w) => `<li class="waarschuwing"><span class="bron">${w.bron === 'historie' ? 'historie' : 'open'}</span>${esc(w.melding)}</li>`).join('');
+  const items = r.waarschuwingen.map((w) => `<li class="waarschuwing"><span class="bron">${{ historie: 'historie', stoffen: 'stoffen' }[w.bron] ?? 'open'}</span>${esc(w.melding)}</li>`).join('');
   return `<details class="meldingen" id="resultaat-meldingen"${open ? ' open' : ''}>
       <summary>${getal(r.waarschuwingen.length, 0)} ${r.waarschuwingen.length === 1 ? 'melding' : 'meldingen'}: deze regels tellen niet (volledig) mee</summary>
       <ul class="foutlijst">${items}</ul>
@@ -356,7 +358,7 @@ function bakKaart(b, stof, info, kleurVoor, delenVoor) {
     verliesLengte: info?.restIsVerlies ? info.restLengte : 0,
     refBreedte: stof.rolbreedte,
     delenVoor,
-    titel: (p, baan) => `${orderNrVan(p.doekId)}${baan ? ` · baan ${baan.i}/${baan.n}` : ''} · ${maat(p.w, p.h)} cm${p.gedraaid ? ' · gedraaid' : ''} · op ${getal(p.x, 0)}, ${getal(p.y, 0)} cm`,
+    titel: (p, baan) => `${orderNrVan(p.doekId)}${baan ? ` · baan ${baan.i}/${baan.n}` : ''} · ${maat(p.w, p.h)} cm${isGedraaid(p) ? ' · gedraaid' : ''} · op ${getal(p.x, 0)}, ${getal(p.y, 0)} cm`,
   });
   const breedte = Math.min(100, (b.breedte / stof.rolbreedte) * 100);
   return `<article class="bak-kaart">
@@ -382,16 +384,17 @@ function werkbon(stof, bakken, perBak, r, sc, delenVoor) {
       delenVoor,
       verliesLengte: info?.restIsVerlies ? info.restLengte : 0,
       label: (p) => String(nummer.get(p.stukId)),
-      titel: (p, baan) => `${nummer.get(p.stukId)}. ${orderNrVan(p.doekId)}${baan ? ` · baan ${baan.i}/${baan.n}` : ''} · ${maat(p.w, p.h)} cm`,
+      titel: (p, baan) => `${nummer.get(p.stukId)}. ${orderNrVan(p.doekId)}${baan ? ` · baan ${baan.i}/${baan.n}` : ''} · ${maat(p.w, p.h)} cm${isGedraaid(p) ? ' · gedraaid' : ''}`,
     });
     const regels = volgorde.map((p) => {
       const d = doekInfo.get(p.doekId);
       const baan = baanVan(p, delenVoor(p.doekId));
-      const opm = [p.gedraaid ? 'gedraaid' : '', baan ? `baan ${baan.i} van ${baan.n}` : ''].filter(Boolean).join(', ');
+      const opm = [isGedraaid(p) ? 'gedraaid' : '', baan ? `baan ${baan.i} van ${baan.n}` : ''].filter(Boolean).join(', ');
       return `<tr>
           <td class="waarde">${nummer.get(p.stukId)}</td>
           <td class="tekst">${esc(orderNrVan(p.doekId))}</td>
           <td class="tekst">${esc(d?.productNaam ?? '')}</td>
+          <td class="waarde">${d?.ordermaat ? maat(d.ordermaat.b, d.ordermaat.h) : '–'}</td>
           <td class="waarde">${maat(p.w, p.h)}</td>
           <td class="waarde">${getal(p.x, 0)} / ${getal(p.y, 0)}</td>
           <td class="tekst">${opm}</td>
@@ -402,7 +405,7 @@ function werkbon(stof, bakken, perBak, r, sc, delenVoor) {
         ${bakKop(b, info)}
         <div class="werkbon-inhoud">
           <div class="snijplan-kader werkbon-plan" id="werkbon-kader-${veiligId(b.id)}" data-scroll-kader tabindex="0" role="region" aria-label="Werkbonplan ${esc(b.id)}, scrollbaar" style="--l:${Math.round(H)}"><div style="width:${Math.min(100, (b.breedte / stof.rolbreedte) * 100).toFixed(1)}%">${svg}</div></div>
-          ${tabel({ id: `werkbon-${veiligId(b.id)}`, klasse: 'werkbon-tabel', koppen: [['Nr', 'num'], 'Order', 'Product', ['Stuk b × l cm', 'num'], ['x / y cm', 'num'], 'Let op', ['✓', 'vink']], rijen: regels })}
+          ${tabel({ id: `werkbon-${veiligId(b.id)}`, klasse: 'werkbon-tabel', koppen: [['Nr', 'num'], 'Order', 'Product', ['Ordermaat b × h cm', 'num'], ['Stuk b × l cm', 'num'], ['x / y cm', 'num'], 'Let op', ['✓', 'vink']], rijen: regels })}
         </div>
       </article>`;
   }).join('');

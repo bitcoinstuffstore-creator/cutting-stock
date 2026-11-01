@@ -147,3 +147,82 @@ test('invarianten', () => {
     assert.ok([...gezien.values()].every((c) => c === 1));
   }
 });
+
+// ---------- F2: banen van één doek als één blok; F3: vastGedraaid in de plaatsing ----------
+const banen = (doekId, n, w, h) => Array.from({ length: n }, (_, k) => ({
+  id: `${doekId}/${k + 1}`, doekId, orderNr: 'O', product: 'P', stof: 'T', w, h, magDraaien: false, vastGedraaid: false, baan: { i: k + 1, n },
+}));
+
+function controleerBanen(res, stukken, s = 0) {
+  const perDoek = new Map();
+  for (const b of res.bakken) for (const p of b.plaatsingen) {
+    const st = stukken.find((x) => x.id === p.stukId);
+    if (!st.baan) continue;
+    if (!perDoek.has(st.doekId)) perDoek.set(st.doekId, []);
+    perDoek.get(st.doekId).push({ ...p, bakId: b.id, i: st.baan.i });
+  }
+  for (const [doekId, lijst] of perDoek) {
+    assert.equal(new Set(lijst.map((p) => p.bakId)).size, 1, `${doekId}: banen op meerdere bakken`);
+    lijst.sort((a, b) => a.i - b.i);
+    for (let k = 1; k < lijst.length; k++) {
+      assert.equal(lijst[k].x, lijst[0].x, `${doekId}: niet onder elkaar`);
+      assert.ok(Math.abs(lijst[k].y - (lijst[k - 1].y + lijst[k - 1].h + s)) < 1e-9, `${doekId}: niet aaneengesloten`);
+      assert.equal(lijst[k].gedraaid, false);
+    }
+  }
+  return perDoek;
+}
+
+test('F2: banen van één doek op één bak, aaneengesloten', () => {
+  const stukken = [...banen('d1', 3, 104, 200), ...banen('d2', 2, 110, 300), stuk(60, 80, false, { stof: 'T' })];
+  for (const naam of STRATEGIEEN) {
+    const res = nestMetStrategie(stukken, T, [vi('rs', 'reststuk', 120, 250, 'T'), vi('r', 'rol', 120, 900, 'T')], inst, naam);
+    assert.equal(res.onplaatsbaar.length, 0);
+    const pd = controleerBanen(res, stukken);
+    assert.equal(pd.size, 2);
+    // Ids blijven die van de stukken.
+    assert.deepEqual(pd.get('d1').map((p) => p.stukId), ['d1/1', 'd1/2', 'd1/3']);
+  }
+});
+
+test('F2: een reststuk dat maar één baan kan hebben blijft leeg voor die doek', () => {
+  const stukken = banen('d1', 3, 104, 200);
+  const res = nestStof(stukken, T, [vi('rs', 'reststuk', 120, 250, 'T')], inst);
+  assert.equal(res.bakken.find((b) => b.id === 'rs').plaatsingen.length, 0);
+  assert.equal(res.nieuweRollen, 1);
+  controleerBanen(res, stukken);
+});
+
+test('F2: banen met snijspeling', () => {
+  const stukken = banen('d1', 3, 104, 200);
+  const res = nestStof(stukken, T, [], { snijspeling: 2 });
+  const pd = controleerBanen(res, stukken, 2);
+  assert.deepEqual(pd.get('d1').map((p) => p.y), [0, 202, 404]);
+  assert.equal(res.bakken[0].gebruikteLengte, 604);
+});
+
+test('F2: invarianten met banen en losse stukken door elkaar', () => {
+  for (let seed = 1; seed <= 10; seed++) {
+    const r = mulberry32(seed + 100);
+    const stukken = [];
+    for (let i = 0; i < 25; i++) {
+      if (r() < 0.3) stukken.push(...banen(`b${seed}-${i}`, 2 + Math.floor(r() * 3), 60 + Math.floor(r() * 50), 100 + Math.floor(r() * 200)));
+      else stukken.push(stuk(20 + Math.floor(r() * 100), 20 + Math.floor(r() * 250), false, { stof: 'T' }));
+    }
+    const res = nestStof(stukken, T, [vi('rs', 'reststuk', 120, 300, 'T')], inst);
+    assert.equal(res.onplaatsbaar.length, 0);
+    controleerBanen(res, stukken);
+    for (const bak of res.bakken) for (let i = 0; i < bak.plaatsingen.length; i++) for (let j = i + 1; j < bak.plaatsingen.length; j++) {
+      const a = bak.plaatsingen[i], b = bak.plaatsingen[j];
+      assert.ok(!(a.x < b.x + b.w - EPS && b.x < a.x + a.w - EPS && a.y < b.y + b.h - EPS && b.y < a.y + a.h - EPS), `overlap seed ${seed}`);
+    }
+    assert.equal(res.bakken.reduce((t, b) => t + b.plaatsingen.length, 0), stukken.length);
+  }
+});
+
+test('F3: vastGedraaid komt in de plaatsing', () => {
+  const res = nestStof([stuk(300, 500, false, { vastGedraaid: true }), stuk(100, 100, false)], R, [], inst);
+  const pl = res.bakken.flatMap((b) => b.plaatsingen);
+  assert.equal(pl.find((p) => p.w === 300).vastGedraaid, true);
+  assert.equal(pl.find((p) => p.w === 100).vastGedraaid, false);
+});

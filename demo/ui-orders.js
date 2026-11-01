@@ -6,7 +6,7 @@ const LIJSTEN = {
   open: { sleutel: 'openOrders', naam: 'Open orders', tabelId: 'tabel-open' },
   historie: { sleutel: 'historie', naam: 'Historie', tabelId: 'tabel-historie' },
 };
-const BRON_LABEL = { open: 'Open orders', historie: 'Historie' };
+const BRON_LABEL = { open: 'Open orders', historie: 'Historie', stoffen: 'Stoffen' };
 const STAP = { open: 200, historie: 100 };
 const KOLOMMEN = [
   { veld: 'orderNr', kop: 'Ordernr', soort: 'tekst', breedte: 'w-m' },
@@ -49,14 +49,15 @@ function celHTML(lijst, i, kol, regel) {
 function tabelHTML(state, lijst) {
   const { sleutel, tabelId } = LIJSTEN[lijst];
   const regels = state.scenario[sleutel];
-  const metFout = new Set((state.resultaat?.waarschuwingen || []).filter((w) => w.bron === lijst).map((w) => String(w.orderNr)));
+  // Per regel (regelIndex), niet per ordernummer: andere regels van dezelfde order blijven onaangetast.
+  const metFout = new Set((state.resultaat?.waarschuwingen || []).filter((w) => w.bron === lijst && Number.isInteger(w.regelIndex)).map((w) => w.regelIndex));
   // Historie: nieuwste eerst. Open orders: in volgorde van invoer.
   const volgorde = regels.map((_, i) => i);
   if (lijst === 'historie') volgorde.reverse();
   const zichtbaar = volgorde.slice(0, ui.zichtbaar[lijst]);
   const rijen = zichtbaar.map((i) => {
     const r = regels[i];
-    const fout = metFout.has(String(r.orderNr));
+    const fout = metFout.has(i);
     return `<tr${fout ? ' class="heeft-fout" title="Deze regel wordt overgeslagen of past niet; zie de meldingen."' : ''}>
       ${KOLOMMEN.map((k) => celHTML(lijst, i, k, r)).join('')}
       <td><button type="button" class="del" id="${lijst}-${i}-del" data-del="${i}" aria-label="Regel ${i + 1} verwijderen" title="Regel verwijderen">×</button></td>

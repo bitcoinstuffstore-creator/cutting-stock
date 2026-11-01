@@ -5,7 +5,7 @@ import { esc, getal, invoer, leesGetal, tabel } from './format.js';
 const TABELLEN = {
   stoffen: {
     titel: 'Stoffen',
-    uitleg: 'Je stoffencatalogus. Draaien mag niet bij stoffen met een streep of structuur.',
+    uitleg: 'Je stoffencatalogus. Draaien: “Nooit” bij streep of structuur, “Alleen als te breed” draait een doek alleen als het anders niet op de rol past (screens: glansverschil), “Vrij” laat RollNest draaien waar het stof bespaart.',
     toevoegen: 'Stof toevoegen',
     kolommen: [
       { veld: 'code', kop: 'Code', soort: 'tekst', breedte: 'w-s' },
@@ -13,21 +13,23 @@ const TABELLEN = {
       { veld: 'rolbreedte', kop: 'Rolbreedte cm', soort: 'positief', breedte: 'w-s' },
       { veld: 'rollengte', kop: 'Rollengte m', soort: 'positief', breedte: 'w-s' },
       { veld: 'prijsPerM1', kop: 'Prijs per m¹ €', soort: 'getal', breedte: 'w-s' },
-      { veld: 'draaienToegestaan', kop: 'Draaien', soort: 'vink' },
+      { veld: 'draaien', kop: 'Draaien', soort: 'keuze', opties: [['nooit', 'Nooit'], ['alsTeBreed', 'Alleen als te breed'], ['vrij', 'Vrij']] },
     ],
-    nieuw: (lijst) => ({ code: uniekeCode(lijst, 'code', 'STOF'), naam: 'Nieuwe stof', rolbreedte: 300, rollengte: 40, prijsPerM1: 10, draaienToegestaan: true }),
+    uniek: 'code',
+    nieuw: (lijst) => ({ code: uniekeCode(lijst, 'code', 'STOF'), naam: 'Nieuwe stof', rolbreedte: 300, rollengte: 40, prijsPerM1: 10, draaien: 'alsTeBreed' }),
   },
   producttypes: {
     titel: 'Producttypes',
-    uitleg: 'De confectietoeslag per product: zoveel cm komt er bij de ordermaat voor zomen, kokers en naden.',
+    uitleg: 'De confectietoeslag per product: zoveel cm komt er bij de ordermaat voor zomen, kokers en naden. Banen: een te breed doek mag uit aan elkaar genaaide banen bestaan (zonneschermdoek wel, screens en rolgordijnen niet).',
     toevoegen: 'Producttype toevoegen',
     kolommen: [
       { veld: 'code', kop: 'Code', soort: 'tekst', breedte: 'w-m' },
       { veld: 'naam', kop: 'Naam', soort: 'tekst', breedte: 'w-l' },
       { veld: 'toeslagBreedte', kop: 'Toeslag breedte cm', soort: 'getal', breedte: 'w-s' },
       { veld: 'toeslagHoogte', kop: 'Toeslag hoogte cm', soort: 'getal', breedte: 'w-s' },
+      { veld: 'banenToegestaan', kop: 'Banen', soort: 'vink' },
     ],
-    nieuw: (lijst) => ({ code: uniekeCode(lijst, 'code', 'product'), naam: 'Nieuw product', toeslagBreedte: 0, toeslagHoogte: 0 }),
+    nieuw: (lijst) => ({ code: uniekeCode(lijst, 'code', 'product'), naam: 'Nieuw product', toeslagBreedte: 0, toeslagHoogte: 0, banenToegestaan: false }),
   },
   voorraad: {
     titel: 'Voorraad',
@@ -40,6 +42,7 @@ const TABELLEN = {
       { veld: 'breedte', kop: 'Breedte cm', soort: 'positief', breedte: 'w-s' },
       { veld: 'lengte', kop: 'Lengte cm', soort: 'positief', breedte: 'w-s' },
     ],
+    uniek: 'id',
     nieuw: (lijst, sc) => {
       const stof = sc.stoffen[0];
       return { id: uniekeCode(lijst, 'id', 'V'), stof: stof?.code ?? '', soort: 'rol', breedte: stof?.rolbreedte ?? 300, lengte: (stof?.rollengte ?? 40) * 100 };
@@ -63,9 +66,18 @@ function uniekeCode(lijst, veld, basis) {
   return `${basis}-${n}`;
 }
 
-function celHTML(tab, i, kol, rij) {
+// Waarden die vaker dan één keer voorkomen (stofcodes hoofdletterongevoelig).
+function dubbeleWaarden(lijst, veld) {
+  const tel = new Map();
+  const k = (v) => String(v ?? '').trim().toLowerCase();
+  for (const x of lijst) tel.set(k(x[veld]), (tel.get(k(x[veld])) || 0) + 1);
+  return new Set(lijst.map((x) => x[veld]).filter((v) => k(v) !== '' && tel.get(k(v)) > 1).map(k));
+}
+
+function celHTML(tab, i, kol, rij, dubbel) {
   const id = `${tab}-${i}-${kol.veld}`;
-  const label = `aria-label="${esc(kol.kop)}, regel ${i + 1}"`;
+  const isDubbel = dubbel && kol.veld === TABELLEN[tab].uniek && dubbel.has(String(rij[kol.veld] ?? '').trim().toLowerCase());
+  const label = `aria-label="${esc(kol.kop)}, regel ${i + 1}"${isDubbel ? ` aria-invalid="true" aria-describedby="dubbel-${tab}"` : ''}`;
   const v = rij[kol.veld];
   if (kol.soort === 'vink') {
     return `<td class="vink"><input type="checkbox" id="${id}" data-i="${i}" data-veld="${kol.veld}" ${v ? 'checked' : ''} ${label}></td>`;
@@ -75,7 +87,7 @@ function celHTML(tab, i, kol, rij) {
     return `<td><select class="cel" id="${id}" data-i="${i}" data-veld="${kol.veld}" ${label}>${opties}</select></td>`;
   }
   const num = kol.soort !== 'tekst';
-  const ongeldig = num && !geldigGetal(v, kol.soort);
+  const ongeldig = num && !geldigGetal(v, kol.soort) && !isDubbel;
   return `<td><input class="cel ${kol.breedte || ''}${num ? ' num' : ''}" id="${id}" data-i="${i}" data-veld="${kol.veld}"
     value="${esc(num ? invoer(v) : v ?? '')}"${num ? ' inputmode="decimal"' : ''}${kol.lijst ? ` list="${kol.lijst}"` : ''}
     ${ongeldig ? 'aria-invalid="true"' : ''} autocomplete="off" spellcheck="false" ${label}></td>`;
@@ -88,7 +100,9 @@ function geldigGetal(n, soort) {
 function tabelPaneel(state, tab) {
   const def = TABELLEN[tab];
   const lijst = state.scenario[tab];
-  const rijen = lijst.map((rij, i) => `<tr>${def.kolommen.map((k) => celHTML(tab, i, k, rij)).join('')}
+  const dubbel = def.uniek ? dubbeleWaarden(lijst, def.uniek) : null;
+  const dubbelTekst = dubbel?.size ? esc([...new Set(lijst.map((x) => String(x[def.uniek] ?? '').trim()).filter((v) => dubbel.has(v.toLowerCase())))].join(', ')) : '';
+  const rijen = lijst.map((rij, i) => `<tr>${def.kolommen.map((k) => celHTML(tab, i, k, rij, dubbel)).join('')}
     <td><button type="button" class="del" id="${tab}-${i}-del" data-tabel="${tab}" data-del="${i}" aria-label="Regel ${i + 1} verwijderen" title="Verwijderen">×</button></td></tr>`);
   const koppen = def.kolommen.map((k) => (k.soort === 'tekst' || k.soort === 'keuze' ? k.kop : k.soort === 'vink' ? [k.kop, 'vink'] : [k.kop, 'num'])).concat([['', '']]);
   return `<section class="paneel" aria-labelledby="titel-${tab}">
@@ -98,6 +112,9 @@ function tabelPaneel(state, tab) {
     </div>
     <p class="uitleg">${def.uitleg}</p>
     ${lijst.length ? tabel({ id: `tabel-${tab}`, koppen, rijen }) : '<div class="leeg-staat">Nog niets ingevoerd.</div>'}
+    ${dubbel?.size ? `<p class="fout-tekst" id="dubbel-${tab}">${tab === 'stoffen'
+    ? `Dubbele stofcode: ${dubbelTekst}. RollNest rekent alleen met de eerste; geef elke stof een eigen code.`
+    : `Dubbel ID: ${dubbelTekst}. Geef elk stuk voorraad een eigen ID, dan vind je het op de snijplannen terug.`}</p>` : ''}
   </section>`;
 }
 

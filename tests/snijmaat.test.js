@@ -89,3 +89,82 @@ test('onplaatsbaar', () => {
   assert.equal(r.waarschuwingen[0].soort, 'onplaatsbaar');
   assert.equal(r.waarschuwingen[0].orderNr, 'A');
 });
+
+// ---------- Final fix wave: F1 banenToegestaan, F4 draaien, F6 snijspeling, F14 getallen, F16 regelIndex ----------
+const sc2 = (stofExtra = {}, inst = {}) => ({
+  stoffen: [
+    { code: 'S', naam: 'Screen Smal', rolbreedte: 250, rollengte: 30, prijsPerM1: 10, draaien: 'alsTeBreed', ...stofExtra },
+    { code: 'T', naam: 'Streep', rolbreedte: 120, rollengte: 40, prijsPerM1: 10, draaien: 'nooit' },
+  ],
+  producttypes: [
+    { code: 'screen', naam: 'Screen', toeslagBreedte: 4, toeslagHoogte: 12, banenToegestaan: false },
+    { code: 'knik', naam: 'Knikarmscherm', toeslagBreedte: 6, toeslagHoogte: 20, banenToegestaan: true },
+  ],
+  instellingen: { naadtoeslag: 4, ...inst },
+});
+
+test('F1: te brede screen zonder banen is onplaatsbaar met duidelijke melding', () => {
+  const r = maakStukken([regel({ stof: 'S', breedte: 300, hoogte: 260 })], sc2());
+  assert.equal(r.stukken.length, 0);
+  assert.equal(r.waarschuwingen.length, 1);
+  assert.equal(r.waarschuwingen[0].soort, 'onplaatsbaar');
+  assert.equal(r.waarschuwingen[0].melding, 'Order A: doek van 304 cm is te breed voor Screen Smal (rol 250 cm); kies een bredere stof.');
+});
+
+test('F1: banen alleen als het producttype dat toestaat', () => {
+  const r = maakStukken([regel({ product: 'knik', stof: 'T', breedte: 300, hoogte: 200 })], sc2());
+  assert.equal(r.stukken.length, 3);
+  assert.ok(r.stukken.every((s) => s.baan && s.baan.n === 3));
+});
+
+test('F1/F4: alsTeBreed draait een te brede screen vast als de hoogte past', () => {
+  const r = maakStukken([regel({ stof: 'S', breedte: 300, hoogte: 200 })], sc2());
+  assert.equal(r.stukken.length, 1);
+  const s = r.stukken[0];
+  assert.deepEqual({ w: s.w, h: s.h, magDraaien: s.magDraaien, vastGedraaid: s.vastGedraaid }, { w: 212, h: 304, magDraaien: false, vastGedraaid: true });
+});
+
+test('F4: alsTeBreed draait niet vrij als het doek past', () => {
+  const r = maakStukken([regel({ stof: 'S', breedte: 200, hoogte: 150 })], sc2());
+  assert.equal(r.stukken[0].magDraaien, false);
+  assert.equal(r.stukken[0].vastGedraaid, false);
+});
+
+test('F4: draaien vrij en nooit; legacy boolean wordt nog begrepen', () => {
+  const vrij = maakStukken([regel({ stof: 'S', breedte: 200, hoogte: 150 })], sc2({ draaien: 'vrij' }));
+  assert.equal(vrij.stukken[0].magDraaien, true);
+  const nooit = maakStukken([regel({ stof: 'S', breedte: 300, hoogte: 200 })], sc2({ draaien: 'nooit' }));
+  assert.equal(nooit.stukken.length, 0);
+  assert.equal(nooit.waarschuwingen[0].soort, 'onplaatsbaar');
+  const legacy = maakStukken([regel({ stof: 'S', breedte: 200, hoogte: 150 })], sc2({ draaien: undefined, draaienToegestaan: true }));
+  assert.equal(legacy.stukken[0].magDraaien, true);
+  const legacyNee = maakStukken([regel({ stof: 'S', breedte: 200, hoogte: 150 })], sc2({ draaien: undefined, draaienToegestaan: false }));
+  assert.equal(legacyNee.stukken[0].magDraaien, false);
+});
+
+test('F6: snijspeling telt mee in de keuze passen / draaien / banen', () => {
+  // 246 + 4 = 250 past precies zonder speling, met 1 cm speling niet meer: dan vast gedraaid.
+  const zonder = maakStukken([regel({ stof: 'S', breedte: 246, hoogte: 150 })], sc2());
+  assert.equal(zonder.stukken[0].vastGedraaid, false);
+  const met = maakStukken([regel({ stof: 'S', breedte: 246, hoogte: 150 })], sc2({}, { snijspeling: 1 }));
+  assert.equal(met.stukken[0].vastGedraaid, true);
+  // Banen: 120 breed, speling 2 → elke baan + speling moet in 120 passen.
+  const b = maakStukken([regel({ product: 'knik', stof: 'T', breedte: 222, hoogte: 200 })], sc2({}, { snijspeling: 2 }));
+  assert.ok(b.stukken.every((s) => s.w + 2 <= 120 + 1e-9), JSON.stringify(b.stukken.map((s) => s.w)));
+});
+
+test('F6: banen van één doek moeten samen op één rol passen', () => {
+  // 3 banen van 1420 cm = 4260 cm > rol 4000 cm.
+  const r = maakStukken([regel({ product: 'knik', stof: 'T', breedte: 300, hoogte: 1400 })], sc2());
+  assert.equal(r.stukken.length, 0);
+  assert.equal(r.waarschuwingen[0].soort, 'onplaatsbaar');
+});
+
+test('F14/F16: meldingen met nl-getallen en regelIndex', () => {
+  const r = maakStukken([regel({ stof: 'S' }), regel({ stof: 'S', breedte: 300.25, hoogte: 260, orderNr: 'B' })], sc2());
+  const w = r.waarschuwingen[0];
+  assert.equal(w.regelIndex, 1);
+  assert.match(w.melding, /doek van 304,3 cm/);
+  const x = maakStukken([regel({ stof: 'x' })], sc2());
+  assert.equal(x.waarschuwingen[0].regelIndex, 0);
+});

@@ -30,8 +30,8 @@ test('velden krijgen het juiste type', () => {
     instellingen: { naadtoeslag: 'x', snijspeling: 1, horizonMaanden: 2 },
   });
   assert.deepEqual(sc.openOrders[0], { orderNr: '12', datum: '', product: 'screen', stof: 'S5A', breedte: 200, hoogte: null, aantal: 1 });
-  assert.deepEqual(sc.stoffen[0], { code: 'S5A', naam: 'S5A', rolbreedte: 250, rollengte: 30, prijsPerM1: 14, draaienToegestaan: true });
-  assert.deepEqual(sc.producttypes[0], { code: 'screen', naam: 'screen', toeslagBreedte: 0, toeslagHoogte: 0 });
+  assert.deepEqual(sc.stoffen[0], { code: 'S5A', naam: 'S5A', rolbreedte: 250, rollengte: 30, prijsPerM1: 14, draaien: 'vrij' });
+  assert.deepEqual(sc.producttypes[0], { code: 'screen', naam: 'screen', toeslagBreedte: 0, toeslagHoogte: 0, banenToegestaan: false });
   assert.deepEqual(sc.voorraad[0], { id: '1', stof: 'S5A', soort: 'rol', breedte: 250, lengte: 1000 });
   assert.deepEqual(sc.gevoel, { VDG: 40 });
   assert.equal(sc.instellingen.naadtoeslag, 4);
@@ -47,4 +47,14 @@ test('voorbeeldscenario blijft gelijk na normaliseren', () => {
 test('genormaliseerd kapot scenario rekent zonder fout', () => {
   const sc = normaliseer({ versie: 1, openOrders: [null, { stof: 'S5A' }], stoffen: [null, { code: 'S5A' }], historie: [{}] });
   assert.doesNotThrow(() => analyseer(sc));
+});
+
+test('F1/F4: draairegel en banen worden genormaliseerd', () => {
+  const sc = normaliseer({
+    stoffen: [{ code: 'A', draaienToegestaan: false }, { code: 'B', draaien: 'alsTeBreed' }, { code: 'C', draaien: 'raar', draaienToegestaan: true }],
+    producttypes: [{ code: 'knik' }, { code: 'rol', naam: 'Rolgordijn' }, { code: 'screen', banenToegestaan: true }],
+  });
+  assert.deepEqual(sc.stoffen.map((s) => s.draaien), ['nooit', 'alsTeBreed', 'vrij']);
+  assert.ok(sc.stoffen.every((s) => !('draaienToegestaan' in s)));
+  assert.deepEqual(sc.producttypes.map((p) => p.banenToegestaan), [true, false, true]);
 });
