@@ -29,7 +29,7 @@ npm test       # unittests van de rekenkern en demo-onderdelen (node:test)
 npm run e2e    # Playwright-rooktest met screenshots in e2e-screens/ (of $SCRATCH)
 ```
 
-De e2e-test gebruikt een lokaal geinstalleerde Playwright met Chromium.
+De e2e-test gebruikt een lokaal geïnstalleerde Playwright met Chromium.
 
 ## CSV-formaat
 
@@ -45,7 +45,7 @@ Plak regels in het orders-scherm of kies een bestand. Het scheidingsteken (`;`, 
 | hoogte | h, lengte, height |
 | aantal | qty, stuks |
 
-Kolomnamen zijn niet hoofdlettergevoelig. Ontbreekt `aantal`, dan geldt 1. Ontbreekt `datum`, dan geldt vandaag. Foute regels worden niet geimporteerd maar wel getoond.
+Kolomnamen zijn niet hoofdlettergevoelig. Ontbreekt `aantal`, dan geldt 1. Ontbreekt `datum`, dan geldt vandaag. Foute regels worden niet geïmporteerd maar wel getoond.
 
 ```
 ordernr;datum;product;stof;breedte;hoogte;aantal
