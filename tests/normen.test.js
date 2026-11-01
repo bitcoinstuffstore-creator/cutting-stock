@@ -52,10 +52,9 @@ test('norm', () => {
   assert.equal(n.stof, 'R');
   assert.equal(n.maatklasse, '<150');
   bijna(n.gemNettoM2, 1);
-  const bruto = r.maandverbruik.R[0].brutoM1; // m1 totaal
-  bijna(n.gemM1 * 4, 4 * 1 * n.verliesfactor / (320 / 100));
-  assert.ok(n.verliesfactor >= 1);
-  assert.ok(bruto > 0);
+  // 4 stukken van 100x100 op rol 320: 2 rijen = 200 cm -> bruto 6,4 m2, per doek 1,6 m2 = 0,5 m1
+  bijna(n.gemM1, 0.5);
+  bijna(n.verliesfactor, 1.6);
 });
 
 test('sortering', () => {
@@ -75,4 +74,30 @@ test('leeg', () => {
 test('waarschuwingen doorgegeven', () => {
   const r = berekenNormen(base([regel({ stof: 'Z' })]));
   assert.equal(r.waarschuwingen[0].soort, 'onbekendeStof');
+});
+
+test('ongeldige datum wordt overgeslagen', () => {
+  for (const datum of ['2026-1-5', '05-01-2026', '', '2026-13-01']) {
+    const r = berekenNormen(base([regel({ datum, aantal: 2 }), regel({ orderNr: 'OK' })]));
+    const w = r.waarschuwingen.filter((x) => x.soort === 'ongeldigeDatum');
+    assert.equal(w.length, 1, datum);
+    assert.equal(w[0].orderNr, 'A');
+    assert.deepEqual(r.maandverbruik.R.map((m) => m.maand), ['2026-01']);
+    assert.equal(r.normen.reduce((a, n) => a + n.aantalDoeken, 0), 1);
+  }
+  const r = berekenNormen(base([regel({ datum: 'kapot' })]));
+  assert.deepEqual(r.normen, []);
+  assert.deepEqual(r.maandverbruik.R, []);
+});
+
+test('jaarwisseling', () => {
+  const r = berekenNormen(base([regel({ datum: '2025-12-20' }), regel({ datum: '2026-01-03', orderNr: 'B' })]));
+  assert.deepEqual(r.maandverbruik.R.map((m) => m.maand), ['2025-12', '2026-01']);
+});
+
+test('verliesfactor over hele historie', () => {
+  // maand 1: 100x100 (bruto 3,2 / netto 1); maand 2: 320x100 (bruto 3,2 / netto 3,2)
+  const r = berekenNormen(base([regel({ datum: '2026-01-05' }), regel({ datum: '2026-02-05', orderNr: 'B', breedte: 320 })]));
+  assert.equal(r.normen.length, 2);
+  for (const n of r.normen) bijna(n.verliesfactor, 6.4 / 4.2);
 });

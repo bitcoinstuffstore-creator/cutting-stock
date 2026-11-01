@@ -11,23 +11,29 @@ export function maatklasse(breedte) {
   return '>=350';
 }
 
-function volgendeMaand(m) {
-  const [j, mm] = m.split('-').map(Number);
-  return mm === 12 ? `${j + 1}-01` : `${j}-${String(mm + 1).padStart(2, '0')}`;
-}
+const GELDIGE_MAAND = /^\d{4}-(0[1-9]|1[0-2])/;
+const maandIndex = (m) => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7)) - 1;
+const maandNaam = (i) => `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`;
 
 // Verbruiksnormen en verwacht maandverbruik uit de historie (spec 4.4).
 export function berekenNormen(scenario) {
-  const historie = scenario.historie || [];
   const inst = scenario.instellingen || {};
-  const { doeken, stukken, waarschuwingen } = maakStukken(historie, scenario);
+  const ongeldigeDatum = [];
+  const historie = (scenario.historie || []).filter((r) => {
+    if (GELDIGE_MAAND.test(String(r.datum ?? ''))) return true;
+    ongeldigeDatum.push({ soort: 'ongeldigeDatum', orderNr: r.orderNr, melding: `Order ${r.orderNr}: ongeldige datum "${r.datum ?? ''}" (verwacht JJJJ-MM-DD); regel genegeerd in de historie.` });
+    return false;
+  });
+  const { doeken, stukken, waarschuwingen: wMaak } = maakStukken(historie, scenario);
+  const waarschuwingen = [...wMaak, ...ongeldigeDatum];
 
   const maandVan = (d) => d.datum.slice(0, 7);
   const maandenMetData = doeken.map(maandVan).sort();
   const maanden = [];
   if (maandenMetData.length) {
-    const laatste = maandenMetData[maandenMetData.length - 1];
-    for (let m = maandenMetData[0]; m <= laatste; m = volgendeMaand(m)) maanden.push(m);
+    const eerste = maandIndex(maandenMetData[0]);
+    const aantal = maandIndex(maandenMetData[maandenMetData.length - 1]) - eerste + 1;
+    for (let i = 0; i < aantal; i++) maanden.push(maandNaam(eerste + i));
   }
 
   const doekMap = new Map(doeken.map((d) => [d.doekId, d]));
