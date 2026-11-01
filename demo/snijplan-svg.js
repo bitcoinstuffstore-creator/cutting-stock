@@ -4,7 +4,8 @@ import { esc } from './format.js';
 
 const r2 = (v) => Math.round(v * 100) / 100;
 const maat = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
-const veiligId = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, '_');
+// Veilig als HTML/SVG-id: alles behalve letters, cijfers, _ en - wordt _.
+export const veiligId = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, '_');
 
 // doekId = `${regelIndex}:${orderNr}#${k}`
 export function orderNrVan(doekId) {
@@ -14,14 +15,27 @@ export function orderNrVan(doekId) {
   return s.slice(start, eind > start ? eind : s.length);
 }
 
-const standaardLabel = (p) => [orderNrVan(p.doekId), `${maat(p.w)} × ${maat(p.h)}`];
+// Baannummer uit stukId = `${doekId}/${i}`; n = aantal stukken (banen) van die doek.
+export function baanVan(p, n) {
+  if (!(n > 1)) return null;
+  const i = Number(String(p.stukId).slice(String(p.doekId).length + 1));
+  return Number.isInteger(i) && i > 0 ? { i, n } : null;
+}
+
+const standaardLabel = (p, baan) => [
+  orderNrVan(p.doekId),
+  ...(baan ? [`baan ${baan.i}/${baan.n}`] : []),
+  `${maat(p.w)} × ${maat(p.h)}`,
+];
 
 /**
  * @param bak    { id, breedte, gebruikteLengte, plaatsingen[{stukId, doekId, x, y, w, h, gedraaid}] }
  * @param opties kleurVoor(doekId) → CSS-klasse (bv. 'kleur-3'); label(p) → string | string[];
  *               titel(p) → tooltip; verliesLengte: cm extra onderaan (restlengte die verlies is);
  *               refBreedte: breedte waarop de lettergrootte schaalt (standaard de bakbreedte);
- *               compact: één regel tekst, zo groot als het stuk toelaat (werkbon); id: voorvoegsel voor het pattern-id.
+ *               compact: één regel tekst, zo groot als het stuk toelaat (werkbon); id: voorvoegsel voor het pattern-id;
+ *               delenVoor(doekId) → aantal stukken (banen) van die doek; standaard geteld binnen deze bak.
+ *               label en titel krijgen (p, baan) mee, baan = {i, n} of null.
  */
 export function snijplanSVG(bak, opties = {}) {
   const {
@@ -32,7 +46,11 @@ export function snijplanSVG(bak, opties = {}) {
     refBreedte = bak.breedte,
     compact = false,
     id = 'snijplan',
+    delenVoor,
   } = opties;
+  const teller = new Map();
+  for (const p of bak.plaatsingen) teller.set(p.doekId, (teller.get(p.doekId) || 0) + 1);
+  const delen = delenVoor || ((doekId) => teller.get(doekId) || 1);
   const B = bak.breedte;
   const H = Math.max(1, (bak.gebruikteLengte || 0) + (verliesLengte > 0 ? verliesLengte : 0));
   const patId = veiligId(`${id}-arcering-${bak.id}`);
@@ -40,30 +58,35 @@ export function snijplanSVG(bak, opties = {}) {
   const fs = refBreedte * 0.05;
 
   const stukken = bak.plaatsingen.map((p) => {
-    const regels = [].concat(label(p)).filter((t) => t != null && t !== '').map(String);
-    const tip = titel ? titel(p) : `${regels.join(' · ')}${p.gedraaid ? ' (gedraaid)' : ''}`;
+    const baan = baanVan(p, delen(p.doekId));
+    const regels = [].concat(label(p, baan)).filter((t) => t != null && t !== '').map(String);
+    const tip = titel ? titel(p, baan) : `${regels.join(' · ')}${p.gedraaid ? ' (gedraaid)' : ''}`;
     const cx = r2(p.x + p.w / 2);
     const cy = r2(p.y + p.h / 2);
     let tekst = '';
     if (compact) {
       const lang = Math.max(1, ...regels.map((t) => t.length));
-      const grootte = Math.min(p.h * 0.6, (p.w * 0.85) / (lang * 0.62), refBreedte * 0.14);
+      const grootte = Math.min(p.h * 0.6, (p.w * 0.85) / (lang * 0.62), refBreedte * 0.09);
       if (regels.length && grootte >= refBreedte * 0.035) {
         tekst = `<text class="stuk-label" x="${cx}" y="${cy}" font-size="${r2(grootte)}">${esc(regels[0])}</text>`;
       }
     } else {
       const past = (t) => t.length * 0.6 * fs + fs * 0.6 <= p.w;
+      // Zoveel regels als er passen (in volgorde), maximaal drie.
       let zicht = [];
-      if (regels.length >= 2 && p.h >= fs * 2.6 && past(regels[0]) && past(regels[1])) zicht = regels.slice(0, 2);
-      else if (regels.length && p.h >= fs * 1.4 && past(regels[0])) zicht = [regels[0]];
+      for (let n = Math.min(3, regels.length); n >= 1; n--) {
+        if (p.h >= fs * (1.15 * n + 0.3) && regels.slice(0, n).every(past)) { zicht = regels.slice(0, n); break; }
+      }
       if (zicht.length) {
         const y0 = cy - ((zicht.length - 1) * fs * 1.15) / 2;
         const tspans = zicht.map((t, i) => `<tspan x="${cx}" y="${r2(y0 + i * fs * 1.15)}">${esc(t)}</tspan>`).join('');
         tekst = `<text class="stuk-label" font-size="${r2(fs)}">${tspans}</text>`;
       }
     }
-    return `<g class="${esc(kleurVoor(p.doekId))}"><title>${esc(tip)}</title>`
-      + `<rect class="stuk" x="${r2(p.x)}" y="${r2(p.y)}" width="${r2(p.w)}" height="${r2(p.h)}"/>${tekst}</g>`;
+    const baanKlasse = baan ? ` baan baan-${baan.i % 2 ? 'oneven' : 'even'}` : '';
+    const vlak = `x="${r2(p.x)}" y="${r2(p.y)}" width="${r2(p.w)}" height="${r2(p.h)}"`;
+    return `<g class="${esc(kleurVoor(p.doekId))}${baanKlasse}"><title>${esc(tip)}</title>`
+      + `<rect class="stuk" ${vlak}/>${baan && baan.i % 2 === 0 ? `<rect class="baan-tint" ${vlak}/>` : ''}${tekst}</g>`;
   }).join('');
 
   return `<svg class="snijplan-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(B)} ${r2(H)}" width="100%" preserveAspectRatio="xMidYMin meet" role="img" aria-label="Snijplan ${esc(bak.id)}: ${maat(B)} cm breed, ${maat(H)} cm lang">`

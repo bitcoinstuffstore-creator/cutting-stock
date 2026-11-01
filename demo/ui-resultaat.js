@@ -1,7 +1,7 @@
 // Resultaat: inkoopadvies, verbruik per doek, normen en snijplannen (met werkbon).
 import { getal, euro, esc, tabel } from './format.js';
 import { exportPaneelHTML, kopieer } from './export-paneel.js';
-import { snijplanSVG, orderNrVan } from './snijplan-svg.js';
+import { snijplanSVG, orderNrVan, baanVan, veiligId } from './snijplan-svg.js';
 import { doekRijen, inkoopCSV, doekenCSV, verschilSoort } from './resultaat-rijen.js';
 
 const SUBTABS = [
@@ -22,7 +22,6 @@ const ui = { export: null, filterStof: '', filterProduct: '', stof: null, werkbo
 
 const maat = (b, h) => `${getal(b, b % 1 ? 1 : 0)} × ${getal(h, h % 1 ? 1 : 0)}`;
 const pct = (v) => `${getal(v, 1)}%`;
-const veiligId = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, '_');
 
 function strategieTekst(naam) {
   const [p, s] = String(naam || '').split('/');
@@ -303,6 +302,10 @@ function snijplannenScherm(r, sc) {
   const perBak = new Map(verbruik.perBak.map((x) => [x.bakId, x]));
 
   // Kleur per doek: vaste volgorde van de doeken van deze stof.
+  // Aantal stukken (banen) per doek over alle bakken van deze stof.
+  const delen = new Map();
+  for (const b of bakken) for (const pl of b.plaatsingen) delen.set(pl.doekId, (delen.get(pl.doekId) || 0) + 1);
+  const delenVoor = (id) => delen.get(id) || 1;
   const doekIndex = new Map();
   for (const d of r.doeken) if (d.stof === stof.code && !doekIndex.has(d.doekId)) doekIndex.set(d.doekId, doekIndex.size);
   for (const b of bakken) for (const pl of b.plaatsingen) if (!doekIndex.has(pl.doekId)) doekIndex.set(pl.doekId, doekIndex.size);
@@ -336,7 +339,7 @@ function snijplannenScherm(r, sc) {
         : '<p class="uitleg">Elke rol van boven (begin van de rol) naar beneden. Gekleurde vlakken zijn doeken, het gearceerde deel is snijverlies. Wijs een stuk aan voor de details.</p>'}
     </section>`;
 
-  return kop + (ui.werkbon ? werkbon(stof, bakken, perBak, r, sc) : `<div class="bakken">${bakken.map((b) => bakKaart(b, stof, perBak.get(b.id), kleurVoor)).join('')}</div>`);
+  return kop + (ui.werkbon ? werkbon(stof, bakken, perBak, r, sc, delenVoor) : `<div class="bakken">${bakken.map((b) => bakKaart(b, stof, perBak.get(b.id), kleurVoor, delenVoor)).join('')}</div>`);
 }
 
 function bakKop(b, info) {
@@ -347,25 +350,24 @@ function bakKop(b, info) {
     </div>`;
 }
 
-function bakKaart(b, stof, info, kleurVoor) {
+function bakKaart(b, stof, info, kleurVoor, delenVoor) {
   const svg = snijplanSVG(b, {
     kleurVoor,
     verliesLengte: info?.restIsVerlies ? info.restLengte : 0,
     refBreedte: stof.rolbreedte,
-    titel: (p) => `${orderNrVan(p.doekId)} · ${maat(p.w, p.h)} cm${p.gedraaid ? ' · gedraaid' : ''} · op ${getal(p.x, 0)}, ${getal(p.y, 0)} cm`,
+    delenVoor,
+    titel: (p, baan) => `${orderNrVan(p.doekId)}${baan ? ` · baan ${baan.i}/${baan.n}` : ''} · ${maat(p.w, p.h)} cm${p.gedraaid ? ' · gedraaid' : ''} · op ${getal(p.x, 0)}, ${getal(p.y, 0)} cm`,
   });
   const breedte = Math.min(100, (b.breedte / stof.rolbreedte) * 100);
   return `<article class="bak-kaart">
       ${bakKop(b, info)}
-      <div class="snijplan-kader" id="kader-${veiligId(`${stof.code}-${b.id}`)}" data-scroll-kader tabindex="0" aria-label="Snijplan ${esc(b.id)}, scrollbaar"><div style="width:${breedte.toFixed(1)}%">${svg}</div></div>
+      <div class="snijplan-kader" id="kader-${veiligId(`${stof.code}-${b.id}`)}" data-scroll-kader tabindex="0" role="region" aria-label="Snijplan ${esc(b.id)}, scrollbaar"><div style="width:${breedte.toFixed(1)}%">${svg}</div></div>
     </article>`;
 }
 
-function werkbon(stof, bakken, perBak, r, sc) {
+function werkbon(stof, bakken, perBak, r, sc, delenVoor) {
   const rijen = doekRijen(r, sc);
   const doekInfo = new Map(rijen.map((d) => [d.doekId, d]));
-  const delen = new Map();
-  for (const b of bakken) for (const p of b.plaatsingen) delen.set(p.doekId, (delen.get(p.doekId) || 0) + 1);
   let nr = 0;
   const rollen = bakken.map((b) => {
     const info = perBak.get(b.id);
@@ -377,14 +379,15 @@ function werkbon(stof, bakken, perBak, r, sc) {
       compact: true,
       id: 'werkbon',
       refBreedte: stof.rolbreedte,
+      delenVoor,
       verliesLengte: info?.restIsVerlies ? info.restLengte : 0,
       label: (p) => String(nummer.get(p.stukId)),
-      titel: (p) => `${nummer.get(p.stukId)}. ${orderNrVan(p.doekId)} · ${maat(p.w, p.h)} cm`,
+      titel: (p, baan) => `${nummer.get(p.stukId)}. ${orderNrVan(p.doekId)}${baan ? ` · baan ${baan.i}/${baan.n}` : ''} · ${maat(p.w, p.h)} cm`,
     });
     const regels = volgorde.map((p) => {
       const d = doekInfo.get(p.doekId);
-      const baan = delen.get(p.doekId) > 1 ? `baan ${esc(p.stukId.split('/').pop())} van ${delen.get(p.doekId)}` : '';
-      const opm = [p.gedraaid ? 'gedraaid' : '', baan].filter(Boolean).join(', ');
+      const baan = baanVan(p, delenVoor(p.doekId));
+      const opm = [p.gedraaid ? 'gedraaid' : '', baan ? `baan ${baan.i} van ${baan.n}` : ''].filter(Boolean).join(', ');
       return `<tr>
           <td class="waarde">${nummer.get(p.stukId)}</td>
           <td class="tekst">${esc(orderNrVan(p.doekId))}</td>
@@ -398,7 +401,7 @@ function werkbon(stof, bakken, perBak, r, sc) {
     return `<article class="werkbon-rol">
         ${bakKop(b, info)}
         <div class="werkbon-inhoud">
-          <div class="werkbon-plan" style="--l:${Math.round(H)}">${svg}</div>
+          <div class="snijplan-kader werkbon-plan" id="werkbon-kader-${veiligId(b.id)}" data-scroll-kader tabindex="0" role="region" aria-label="Werkbonplan ${esc(b.id)}, scrollbaar" style="--l:${Math.round(H)}"><div style="width:${Math.min(100, (b.breedte / stof.rolbreedte) * 100).toFixed(1)}%">${svg}</div></div>
           ${tabel({ id: `werkbon-${veiligId(b.id)}`, klasse: 'werkbon-tabel', koppen: [['Nr', 'num'], 'Order', 'Product', ['Stuk b × l cm', 'num'], ['x / y cm', 'num'], 'Let op', ['✓', 'vink']], rijen: regels })}
         </div>
       </article>`;
@@ -407,4 +410,9 @@ function werkbon(stof, bakken, perBak, r, sc) {
       <p class="werkbon-titel">Werkbon ${esc(stof.naam)} <span class="bron-tag">${esc(stof.code)}</span> · rolbreedte ${getal(stof.rolbreedte, 0)} cm · ${getal(nr, 0)} stukken op ${getal(bakken.length, 0)} ${bakken.length === 1 ? 'rol' : 'rollen'}</p>
       ${rollen}
     </div>`;
+}
+
+// Bij het verlaten van het Resultaat-scherm: een open exportpaneel vervalt.
+export function verlaatResultaat() {
+  ui.export = null;
 }

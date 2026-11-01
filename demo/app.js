@@ -7,7 +7,7 @@ import { getal, euro, esc } from './format.js';
 import { exportPaneelHTML, kopieer } from './export-paneel.js';
 import { renderOrders, verlaatOrders } from './ui-orders.js';
 import { renderStoffen } from './ui-stoffen.js';
-import { renderResultaat } from './ui-resultaat.js';
+import { renderResultaat, verlaatResultaat } from './ui-resultaat.js';
 
 const TABS = ['orders', 'stoffen', 'resultaat'];
 const NOOP_OPSLAG = { getItem: () => null, setItem() {} };
@@ -190,7 +190,10 @@ function renderTabs() {
 }
 function kiesTab(tab, { hash = true } = {}) {
   if (!TABS.includes(tab)) return;
-  if (tab !== state.tab) verlaatOrders();
+  if (tab !== state.tab) {
+    verlaatOrders();
+    verlaatResultaat();
+  }
   state.tab = tab;
   if (hash) {
     try { if (location.hash !== `#${tab}`) history.replaceState(null, '', `#${tab}`); } catch { /* frame zonder history */ }

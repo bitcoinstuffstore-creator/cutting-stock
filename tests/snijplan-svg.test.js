@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { snijplanSVG, orderNrVan } from '../demo/snijplan-svg.js';
+import { snijplanSVG, orderNrVan, veiligId } from '../demo/snijplan-svg.js';
 
 const bak = {
   id: 'nieuw-1', soort: 'nieuw', voorraadId: null, breedte: 320, lengte: 3000, gebruikteLengte: 200,
@@ -66,4 +66,37 @@ test('pattern-id is uniek per bak en veilig', () => {
 test('orderNrVan haalt het ordernummer uit een doekId', () => {
   assert.equal(orderNrVan('12:O-2611-01#3'), 'O-2611-01');
   assert.equal(orderNrVan('3:A#B#2'), 'A#B');
+});
+
+test('banen van dezelfde doek: baanlabel, tooltip en afwisselende klasse', () => {
+  const banen = {
+    id: 'nieuw-2', breedte: 120, lengte: 4000, gebruikteLengte: 300,
+    plaatsingen: [
+      { stukId: '4:Z-9#1/1', doekId: '4:Z-9#1', x: 0, y: 0, w: 110, h: 300, gedraaid: false },
+      { stukId: '4:Z-9#1/2', doekId: '4:Z-9#1', x: 0, y: 300, w: 110, h: 300, gedraaid: false },
+    ],
+  };
+  const svg = snijplanSVG({ ...banen, gebruikteLengte: 600 }, { kleurVoor: () => 'kleur-2' });
+  assert.equal(tel(svg, 'class="kleur-2 baan baan-oneven"'), 1);
+  assert.equal(tel(svg, 'class="kleur-2 baan baan-even"'), 1);
+  assert.equal(tel(svg, 'class="baan-tint"'), 1);
+  assert.ok(svg.includes('baan 1/2'));
+  assert.ok(svg.includes('baan 2/2'));
+  assert.match(svg, /<title>Z-9 · baan 2\/2 · 110 × 300<\/title>/);
+  // Aantal banen kan van buiten komen (banen over meerdere bakken).
+  const een = snijplanSVG({ ...banen, plaatsingen: banen.plaatsingen.slice(1) }, { delenVoor: () => 4 });
+  assert.ok(een.includes('baan 2/4'));
+  // Een doek uit één stuk krijgt geen baanklasse.
+  assert.ok(!snijplanSVG(bak, {}).includes('baan'));
+});
+
+test('svg schaalt mee: geen vaste hoogte, geen vervorming', () => {
+  const svg = snijplanSVG(bak, {});
+  const root = svg.match(/^<svg[^>]*>/)[0];
+  assert.ok(!/\sheight=/.test(root));
+  assert.ok(!svg.includes('preserveAspectRatio="none"'));
+});
+
+test('veiligId', () => {
+  assert.equal(veiligId('R "1"/a'), 'R__1__a');
 });

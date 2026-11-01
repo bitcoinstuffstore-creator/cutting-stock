@@ -34,7 +34,8 @@
   /* Doeken in het snijplan: 8 lichte vlakken met donkere tekst. */
   --stuk-0: #cfe1f3; --stuk-1: #f6d7c3; --stuk-2: #d2eadb; --stuk-3: #e6daf2;
   --stuk-4: #f3e5b3; --stuk-5: #cdeae8; --stuk-6: #f2d2dc; --stuk-7: #dbe2ea;
-  --stuk-rand: #55677a;
+  --stuk-rand: #24303c;
+  --baan-tint: #16202b;
 
   --font-display: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -72,7 +73,7 @@
     --schaduw: rgb(0 0 0 / 0.55);
     --stuk-0: #24496b; --stuk-1: #6b3a1f; --stuk-2: #23553a; --stuk-3: #4b3566;
     --stuk-4: #5c4d16; --stuk-5: #1f5654; --stuk-6: #642c3c; --stuk-7: #3a4654;
-    --stuk-rand: #0b1015;
+    --stuk-rand: #c9d4df; --baan-tint: #ffffff;
     color-scheme: dark;
   }
 }
@@ -104,7 +105,7 @@
   --schaduw: rgb(0 0 0 / 0.55);
   --stuk-0: #24496b; --stuk-1: #6b3a1f; --stuk-2: #23553a; --stuk-3: #4b3566;
   --stuk-4: #5c4d16; --stuk-5: #1f5654; --stuk-6: #642c3c; --stuk-7: #3a4654;
-  --stuk-rand: #0b1015;
+  --stuk-rand: #c9d4df; --baan-tint: #ffffff;
   color-scheme: dark;
 }
 
@@ -468,8 +469,9 @@ details.meldingen .foutlijst { margin-top: 8px; }
   margin-left: 4px;
   vertical-align: 1px;
 }
-td.verschil[data-soort="te-weinig"] { color: var(--bad); }
-td.verschil[data-soort="te-veel"] { color: var(--good); }
+/* Elke afwijking kost geld (overschot of tekort): beide als waarschuwing, met tekstlabel. */
+td.verschil[data-soort="te-weinig"], td.verschil[data-soort="te-veel"] { color: var(--warn); }
+td.verschil[data-soort="te-weinig"] .verschil-tag, td.verschil[data-soort="te-veel"] .verschil-tag { background: var(--warn-soft); }
 td.verschil[data-soort="gelijk"] { color: var(--muted); }
 tfoot td.verschil .verschil-tag { font-weight: 700; }
 
@@ -543,6 +545,7 @@ table.normen tbody tr.groep:hover th { background: var(--surface); }
 .snijplan-svg .rand { fill: none; stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .snijplan-svg .stuk { stroke: var(--stuk-rand); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .snijplan-svg g:hover .stuk { stroke: var(--accent); stroke-width: 2; }
+.snijplan-svg .baan-tint { fill: var(--baan-tint); fill-opacity: 0.1; stroke: none; pointer-events: none; }
 .snijplan-svg .stuk-label { fill: var(--fg); font-family: var(--font-mono); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .kleur-0 .stuk { fill: var(--stuk-0); } .kleur-1 .stuk { fill: var(--stuk-1); }
 .kleur-2 .stuk { fill: var(--stuk-2); } .kleur-3 .stuk { fill: var(--stuk-3); }
@@ -552,9 +555,7 @@ table.normen tbody tr.groep:hover th { background: var(--surface); }
 /* Werkbon: zwart op wit, genummerde stukken en een aftekenlijst per rol. */
 .werkbon { display: grid; gap: 14px; }
 .werkbon-titel { font: 600 1.05rem var(--font-display); }
-.werkbon-inhoud { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; }
-.werkbon-plan { display: flex; justify-content: center; }
-.werkbon-plan .snijplan-svg { width: auto; max-width: 100%; height: clamp(160px, calc(var(--l) * 0.28px), 80vh); }
+.werkbon-inhoud { display: grid; grid-template-columns: minmax(180px, 280px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .werkbon .wb .stuk { fill: var(--surface); stroke: var(--fg); }
 .werkbon .snijplan-svg .stuk-label { font-weight: 600; }
 .werkbon-tabel td.vink-vak { width: 36px; text-align: center; }
@@ -587,7 +588,7 @@ th.vink { text-align: center; }
     --good-soft: #ffffff; --bad-soft: #ffffff; --warn-soft: #ffffff;
     --stuk-0: #cfe1f3; --stuk-1: #f6d7c3; --stuk-2: #d2eadb; --stuk-3: #e6daf2;
     --stuk-4: #f3e5b3; --stuk-5: #cdeae8; --stuk-6: #f2d2dc; --stuk-7: #dbe2ea;
-    --stuk-rand: #000000;
+    --stuk-rand: #000000; --baan-tint: #000000;
     color-scheme: light;
   }
   body { font-size: 11pt; }
@@ -598,7 +599,8 @@ th.vink { text-align: center; }
   .bak-kaart, .grafiek-kaart, tr { break-inside: avoid; }
   .werkbon-rol { break-inside: avoid; border: 0; padding: 0; }
   .werkbon-rol + .werkbon-rol { break-before: page; }
-  .werkbon-plan .snijplan-svg { height: clamp(40mm, calc(var(--l) * 0.08mm), 235mm); }
+  .werkbon-plan > div { width: auto !important; }
+  .werkbon-plan .snijplan-svg { width: auto; max-width: 100%; height: clamp(40mm, calc(var(--l) * 0.08mm), 235mm); }
   th { position: static; }
   .snijplan-svg, .staal, .balk { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
