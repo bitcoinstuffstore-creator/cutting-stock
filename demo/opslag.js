@@ -21,3 +21,25 @@ export function bewaarScenario(storage, scenario) {
     return false;
   }
 }
+
+// Gekozen thema (auto | light | dark): een gemak per kijker, dus stil terugvallen op 'auto'.
+export const THEMA_SLEUTEL = 'rollnest-thema';
+const THEMAS = ['auto', 'light', 'dark'];
+
+export function laadThema(storage) {
+  try {
+    const t = storage.getItem(THEMA_SLEUTEL);
+    return THEMAS.includes(t) ? t : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+export function bewaarThema(storage, thema) {
+  try {
+    storage.setItem(THEMA_SLEUTEL, thema);
+    return true;
+  } catch {
+    return false;
+  }
+}

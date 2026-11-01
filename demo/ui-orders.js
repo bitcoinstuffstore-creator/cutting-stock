@@ -144,6 +144,11 @@ function lijstOpties(state) {
     <datalist id="lijst-producten">${opt(state.scenario.producttypes)}</datalist>`;
 }
 
+// Bij het verlaten van het Orders-scherm: een openstaande leegmaak-vraag vervalt.
+export function verlaatOrders() {
+  ui.bevestigLeeg = false;
+}
+
 export function renderOrders(el, state, acties) {
   const lijst = state.ordersTab === 'historie' ? 'historie' : 'open';
   const { sleutel, naam } = LIJSTEN[lijst];

@@ -1,14 +1,14 @@
 // RollNest demo: state, opslag, debounce, tab-routing en de kopcijfers.
 import { analyseer } from './engine/index.js';
 import { voorbeeldScenario } from './engine/voorbeelddata.js';
-import { laadScenario, bewaarScenario } from './opslag.js';
+import { laadScenario, bewaarScenario, laadThema, bewaarThema } from './opslag.js';
+import { normaliseer } from './scenario.js';
 import { getal, euro, esc, tabel } from './format.js';
 import { exportPaneelHTML, kopieer } from './export-paneel.js';
-import { renderOrders } from './ui-orders.js';
+import { renderOrders, verlaatOrders } from './ui-orders.js';
 import { renderStoffen } from './ui-stoffen.js';
 
 const TABS = ['orders', 'stoffen', 'resultaat'];
-const STANDAARD_INSTELLINGEN = { naadtoeslag: 4, snijspeling: 0, minReststukLengte: 50, gevoelToeslag: 15, historieMaanden: 3, horizonMaanden: 1 };
 const NOOP_OPSLAG = { getItem: () => null, setItem() {} };
 
 function kiesOpslag() {
@@ -19,21 +19,6 @@ function kiesOpslag() {
   }
 }
 const opslag = kiesOpslag();
-
-// Vult ontbrekende onderdelen aan, zodat een geïmporteerd of oud scenario altijd rekent.
-function normaliseer(sc) {
-  const lijst = (x) => (Array.isArray(x) ? x : []);
-  return {
-    versie: 1,
-    stoffen: lijst(sc.stoffen),
-    producttypes: lijst(sc.producttypes),
-    openOrders: lijst(sc.openOrders),
-    historie: lijst(sc.historie),
-    voorraad: lijst(sc.voorraad),
-    gevoel: sc.gevoel && typeof sc.gevoel === 'object' && !Array.isArray(sc.gevoel) ? sc.gevoel : {},
-    instellingen: { ...STANDAARD_INSTELLINGEN, ...(sc.instellingen || {}) },
-  };
-}
 
 const state = {
   scenario: normaliseer(laadScenario(opslag, voorbeeldScenario)),
@@ -122,8 +107,17 @@ const acties = {
 function vervangScenario(nieuw, tekst) {
   vorigScenario = state.scenario;
   state.scenario = normaliseer(nieuw);
+  try {
+    render();
+  } catch {
+    // Kan dit scenario niet getoond worden, dan blijven de vorige gegevens staan (en worden ze niet overschreven).
+    state.scenario = vorigScenario;
+    vorigScenario = null;
+    render();
+    melding('Dit scenario kon niet worden geladen. Je vorige gegevens zijn bewaard.');
+    return;
+  }
   bewaar();
-  render();
   planReken();
   melding(tekst, { ongedaan: true });
 }
@@ -195,6 +189,7 @@ function renderTabs() {
 }
 function kiesTab(tab, { hash = true } = {}) {
   if (!TABS.includes(tab)) return;
+  if (tab !== state.tab) verlaatOrders();
   state.tab = tab;
   if (hash) {
     try { if (location.hash !== `#${tab}`) history.replaceState(null, '', `#${tab}`); } catch { /* frame zonder history */ }
@@ -249,6 +244,7 @@ const SCHERMEN = {
 
 // ---------- Voet: privacy + scenario exporteren/importeren ----------
 let importScenarioTekst = '';
+let voetOpen = null;
 let importScenarioFout = '';
 
 function renderVoet() {
@@ -298,6 +294,8 @@ function laadScenarioTekst(tekst, bron) {
   importScenarioTekst = '';
   importScenarioFout = '';
   state.voetPaneel = null;
+  voetOpen = null;
+  focusNa = 'btn-import-scenario';
   const n = Array.isArray(sc.openOrders) ? sc.openOrders.length : 0;
   vervangScenario(sc, `Scenario geladen${bron ? ` uit ${bron}` : ''}: ${n} open orders.`);
 }
@@ -310,15 +308,24 @@ function toonImportFout(tekst) {
 voetEl.addEventListener('click', (e) => {
   const knop = e.target.closest('button');
   if (!knop) return;
-  if (knop.id === 'btn-export-scenario') state.voetPaneel = state.voetPaneel === 'export' ? null : 'export';
-  else if (knop.id === 'btn-import-scenario') state.voetPaneel = state.voetPaneel === 'import' ? null : 'import';
+  const opener = { export: 'btn-export-scenario', import: 'btn-import-scenario' };
+  if (knop.id === opener.export) state.voetPaneel = state.voetPaneel === 'export' ? null : 'export';
+  else if (knop.id === opener.import) state.voetPaneel = state.voetPaneel === 'import' ? null : 'import';
   else if (knop.dataset.sluitPaneel) state.voetPaneel = null;
   else if (knop.dataset.kopieer) return void kopieer(knop);
   else if (knop.id === 'btn-scenario-laden') return void laadScenarioTekst(importScenarioTekst, '');
   else return;
+  const vorigPaneel = voetOpen;
+  voetOpen = state.voetPaneel;
   importScenarioFout = '';
   renderVoet();
-  document.getElementById(state.voetPaneel ? `${state.voetPaneel}-scenario` : knop.id)?.scrollIntoView?.({ block: 'nearest' });
+  if (state.voetPaneel) {
+    document.getElementById(`${state.voetPaneel}-scenario`)?.scrollIntoView?.({ block: 'nearest' });
+    document.getElementById(opener[state.voetPaneel])?.focus({ preventScroll: true });
+  } else {
+    // Paneel dicht: focus terug naar de knop die het opende.
+    document.getElementById(opener[vorigPaneel] || knop.id)?.focus();
+  }
 });
 voetEl.addEventListener('input', (e) => {
   if (e.target.id === 'import-scenario-tekst') importScenarioTekst = e.target.value;
@@ -335,8 +342,7 @@ voetEl.addEventListener('change', (e) => {
 // ---------- Thema ----------
 const THEMAS = ['auto', 'light', 'dark'];
 const THEMA_LABEL = { auto: 'automatisch', light: 'licht', dark: 'donker' };
-let thema = 'auto';
-try { thema = THEMAS.includes(localStorage.getItem('rollnest-thema')) ? localStorage.getItem('rollnest-thema') : 'auto'; } catch { /* geen opslag */ }
+let thema = laadThema(opslag);
 function zetThema() {
   if (thema === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', thema);
@@ -344,7 +350,7 @@ function zetThema() {
 }
 document.getElementById('btn-thema').addEventListener('click', () => {
   thema = THEMAS[(THEMAS.indexOf(thema) + 1) % THEMAS.length];
-  try { localStorage.setItem('rollnest-thema', thema); } catch { /* geen opslag */ }
+  bewaarThema(opslag, thema);
   zetThema();
 });
 
@@ -375,16 +381,46 @@ function herstelFocus(f) {
   }
 }
 
+// Brede tabellen scrollen in hun eigen kader; bewaar die positie (per tabel-id) over een render heen.
+function bewaarScroll() {
+  const pos = new Map();
+  for (const kader of schermEl.querySelectorAll('.tabel-scroll')) {
+    const id = kader.querySelector('table')?.id;
+    if (id) pos.set(id, [kader.scrollLeft, kader.scrollTop]);
+  }
+  return pos;
+}
+function herstelScroll(pos) {
+  for (const [id, [links, boven]] of pos) {
+    const kader = document.getElementById(id)?.closest('.tabel-scroll');
+    if (kader) { kader.scrollLeft = links; kader.scrollTop = boven; }
+  }
+}
+
 function render() {
   const f = bewaarFocus();
+  const scroll = bewaarScroll();
   renderKop();
   renderTabs();
+  // Elk scherm zet zijn eigen handlers; die van een vorig scherm mogen niet blijven hangen.
+  schermEl.onclick = null;
+  schermEl.onchange = null;
+  schermEl.oninput = null;
   SCHERMEN[state.tab](schermEl, state, acties);
   renderVoet();
+  herstelScroll(scroll);
   herstelFocus(f);
 }
 
 // ---------- Start ----------
 zetThema();
 if (TABS.includes(location.hash.slice(1))) state.tab = location.hash.slice(1);
-reken();
+try {
+  reken();
+} catch {
+  // Opgeslagen gegevens die niet te tonen zijn: start met de voorbeelddata in plaats van een leeg scherm.
+  state.scenario = normaliseer(voorbeeldScenario());
+  bewaar();
+  reken();
+  melding('Je opgeslagen gegevens konden niet worden geopend. De voorbeelddata is geladen.');
+}

@@ -45,3 +45,16 @@ test('setItem dat gooit: bewaarScenario geeft false', () => {
   const opslag = { getItem: () => null, setItem() { throw new Error('vol'); } };
   assert.equal(bewaarScenario(opslag, { versie: 1 }), false);
 });
+
+test('thema: laden en bewaren, met fallback auto', async () => {
+  const { laadThema, bewaarThema } = await import('../demo/opslag.js');
+  const opslag = nepOpslag();
+  assert.equal(laadThema(opslag), 'auto');
+  assert.equal(bewaarThema(opslag, 'dark'), true);
+  assert.equal(laadThema(opslag), 'dark');
+  opslag.setItem('rollnest-thema', 'paars');
+  assert.equal(laadThema(opslag), 'auto');
+  const kapot = { getItem() { throw new Error('x'); }, setItem() { throw new Error('x'); } };
+  assert.equal(laadThema(kapot), 'auto');
+  assert.equal(bewaarThema(kapot, 'light'), false);
+});
